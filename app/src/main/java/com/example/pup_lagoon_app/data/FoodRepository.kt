@@ -8,6 +8,7 @@ class FoodRepository(private val context: Context) {
     private val nameTree = BTree<String, FoodRecord>(5)
     private val categoryTree = BTree<String, FoodRecord>(5)
     private val priceTree = BTree<Double, FoodRecord>(5)
+    private val allCategories = mutableSetOf<String>()
 
     init {
         loadFromCsv()
@@ -27,6 +28,8 @@ class FoodRepository(private val context: Context) {
                     val categories = tokens[5].split(",")
                         .map { it.trim() }
                         .filter { it.isNotEmpty() }
+                    
+                    allCategories.addAll(categories)
                     
                     val numericPrice = tokens[4].replace("₱", "")
                         .replace(",", "")
@@ -93,5 +96,15 @@ class FoodRepository(private val context: Context) {
 
     fun searchByPriceRange(min: Double, max: Double): List<FoodRecord> {
         return priceTree.searchRange(min, max)
+    }
+
+    fun getAllCategories(): List<String> {
+        return allCategories.toList().sorted()
+    }
+
+    fun getAllRecords(): List<FoodRecord> {
+        // Return all records by searching the entire price range or name range
+        // Since we don't have a direct 'getAll' in BTree, we can use searchRange with extreme values
+        return priceTree.searchRange(0.0, Double.MAX_VALUE)
     }
 }

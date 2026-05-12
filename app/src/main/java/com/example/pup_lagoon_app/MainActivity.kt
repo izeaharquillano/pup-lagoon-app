@@ -6,17 +6,52 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import android.util.Log
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import com.example.pup_lagoon_app.data.FoodRecord
 import com.example.pup_lagoon_app.data.FoodRepository
 import com.example.pup_lagoon_app.ui.theme.PuplagoonappTheme
 
@@ -38,26 +73,308 @@ class MainActivity : ComponentActivity() {
 fun MainScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val repository = remember { FoodRepository(context) }
+    var searchQuery by remember { mutableStateOf("") }
+    
+    // Filter State
+    var selectedCategories by remember { mutableStateOf(setOf<String>()) }
+    var minPrice by remember { mutableStateOf("") }
+    var maxPrice by remember { mutableStateOf("") }
+    var showFilterDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        Log.d("FoodSearch", "--- Search by Category: Rice Meal ---")
-        val categoryResults = repository.searchByCategory("Rice Meal")
-        categoryResults?.forEach { record ->
-            Log.d("FoodSearch", "Found: ${record.name} - ${record.price}")
+    val searchResults = remember(searchQuery, selectedCategories, minPrice, maxPrice) {
+        val min = minPrice.toDoubleOrNull() ?: 0.0
+        val max = maxPrice.toDoubleOrNull() ?: Double.MAX_VALUE
+
+        // 1. Get initial set from B-Tree based on name or price range
+        val initialSet = if (searchQuery.isNotBlank()) {
+            repository.searchByName(searchQuery) ?: emptyList()
+        } else if (minPrice.isNotBlank() || maxPrice.isNotBlank()) {
+            repository.searchByPriceRange(min, max)
+        } else if (selectedCategories.isNotEmpty()) {
+            // If only categories, we could pick one category from B-Tree
+            repository.searchByCategory(selectedCategories.first()) ?: emptyList()
+        } else {
+            repository.getAllRecords()
         }
 
-        Log.d("FoodSearch", "--- Search by Price Range: ₱50 to ₱70 ---")
-        val priceResults = repository.searchByPriceRange(50.0, 70.0)
-        priceResults.forEach { record ->
-            Log.d("FoodSearch", "Found: ${record.name} - ${record.price} at ${record.stallName}")
-        }
+        // 2. Filter the initial set in memory for other criteria (Intersection)
+        initialSet.filter { record ->
+            val matchesName = if (searchQuery.isNotBlank()) {
+                record.name.contains(searchQuery, ignoreCase = true)
+            } else true
+            
+            val matchesCategory = if (selectedCategories.isNotEmpty()) {
+                record.categories.any { it in selectedCategories }
+            } else true
+            
+            val matchesPrice = record.numericPrice in min..max
+            
+            matchesName && matchesCategory && matchesPrice
+        }.distinctBy { it.foodId } // Ensure unique results
+    }
+
+    if (showFilterDialog) {
+        FilterDialog(
+            categories = repository.getAllCategories(),
+            selectedCategories = selectedCategories,
+            minPrice = minPrice,
+            maxPrice = maxPrice,
+            onDismiss = { showFilterDialog = false },
+            onApply = { categories, min, max ->
+                selectedCategories = categories
+                minPrice = min
+                maxPrice = max
+                showFilterDialog = false
+            }
+        )
     }
 
     Surface(
         modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        Greeting("Android")
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Food Search",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                
+                IconButton(onClick = { showFilterDialog = true }) {
+                    Icon(
+                        imageVector = Icons.Default.FilterList,
+                        contentDescription = "Filter",
+                        tint = if (selectedCategories.isNotEmpty() || minPrice.isNotBlank() || maxPrice.isNotBlank()) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurface
+                        }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                label = { Text("Search by food name") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
+            if (selectedCategories.isNotEmpty() || minPrice.isNotBlank() || maxPrice.isNotBlank()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Filters applied: ${selectedCategories.size} categories" + 
+                           (if (minPrice.isNotBlank() || maxPrice.isNotBlank()) ", price range" else ""),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (searchResults.isEmpty()) {
+                Text(
+                    text = "No results found",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+            }
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(searchResults) { record ->
+                    FoodItemCard(record)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun FilterDialog(
+    categories: List<String>,
+    selectedCategories: Set<String>,
+    minPrice: String,
+    maxPrice: String,
+    onDismiss: () -> Unit,
+    onApply: (Set<String>, String, String) -> Unit
+) {
+    var tempSelectedCategories by remember { mutableStateOf(selectedCategories) }
+    var tempMinPrice by remember { mutableStateOf(minPrice) }
+    var tempMaxPrice by remember { mutableStateOf(maxPrice) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth()
+            ) {
+                Text(
+                    text = "Filter Options",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Price Range",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = tempMinPrice,
+                        onValueChange = { if (it.isEmpty() || it.toDoubleOrNull() != null) tempMinPrice = it },
+                        label = { Text("Min") },
+                        modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = tempMaxPrice,
+                        onValueChange = { if (it.isEmpty() || it.toDoubleOrNull() != null) tempMaxPrice = it },
+                        label = { Text("Max") },
+                        modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Categories",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                LazyColumn(
+                    modifier = Modifier
+                        .height(200.dp)
+                        .fillMaxWidth()
+                ) {
+                    items(categories) { category ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp)
+                                .toggleable(
+                                    value = category in tempSelectedCategories,
+                                    onValueChange = {
+                                        tempSelectedCategories = if (it) {
+                                            tempSelectedCategories + category
+                                        } else {
+                                            tempSelectedCategories - category
+                                        }
+                                    },
+                                    role = Role.Checkbox
+                                )
+                                .padding(horizontal = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = category in tempSelectedCategories,
+                                onCheckedChange = null // null because of toggleable
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Text(
+                                text = category,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = {
+                        tempSelectedCategories = emptySet()
+                        tempMinPrice = ""
+                        tempMaxPrice = ""
+                    }) {
+                        Text("Clear All")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(onClick = { onApply(tempSelectedCategories, tempMinPrice, tempMaxPrice) }) {
+                        Text("Apply")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun FoodItemCard(record: FoodRecord) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = record.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = record.price,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            Text(
+                text = "Stall: ${record.stallName}",
+                style = MaterialTheme.typography.bodySmall
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Categories: ${record.categories.joinToString(", ")}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.secondary
+            )
+        }
     }
 }
 
