@@ -32,6 +32,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -193,7 +194,7 @@ fun MainScreen() {
                     modifier = Modifier
                         .fillMaxWidth(0.9f)
                         .background(
-                            MaterialTheme.colorScheme.surface,
+                            Color.White,
                             RoundedCornerShape(28.dp)
                         )
                         .padding(horizontal = 4.dp),
@@ -223,7 +224,7 @@ fun MainScreen() {
                             imageVector = Icons.Default.FilterList,
                             contentDescription = "Filter",
                             tint = if (selectedCategories.isNotEmpty() || minPrice.isNotBlank() || maxPrice.isNotBlank()) {
-                                MaterialTheme.colorScheme.primary
+                                Maroon
                             } else {
                                 MaterialTheme.colorScheme.onSurface
                             }
@@ -235,7 +236,7 @@ fun MainScreen() {
                         modifier = Modifier
                             .padding(4.dp)
                             .background(
-                                if (isSystemInDarkTheme()) MaterialTheme.colorScheme.primary else Maroon,
+                                Maroon,
                                 RoundedCornerShape(24.dp)
                             )
                             .size(40.dp)
@@ -262,7 +263,7 @@ fun MainScreen() {
                         modifier = Modifier
                             .fillMaxWidth(0.9f)
                             .clip(RoundedCornerShape(16.dp)),
-                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                        color = Color.White,
                         shape = RoundedCornerShape(16.dp),
                         tonalElevation = 4.dp
                     ) {
@@ -273,7 +274,7 @@ fun MainScreen() {
                         ) {
                             if (selectedCategories.isNotEmpty() || minPrice.isNotBlank() || maxPrice.isNotBlank()) {
                                 Surface(
-                                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
+                                    color = MaterialTheme.colorScheme.primaryContainer,
                                     shape = RoundedCornerShape(4.dp)
                                 ) {
                                     Text(
@@ -440,7 +441,10 @@ fun FilterDialog(
                         Text("Cancel")
                     }
                     Spacer(modifier = Modifier.width(8.dp))
-                    Button(onClick = { onApply(tempSelectedCategories, tempMinPrice, tempMaxPrice) }) {
+                    Button(
+                        onClick = { onApply(tempSelectedCategories, tempMinPrice, tempMaxPrice) },
+                        colors = ButtonDefaults.buttonColors(containerColor = Maroon)
+                    ) {
                         Text("Apply")
                     }
                 }
@@ -456,7 +460,7 @@ fun FoodItemCard(record: FoodRecord) {
             .fillMaxWidth()
             .padding(vertical = 4.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f)
+            containerColor = Color.White
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -475,7 +479,7 @@ fun FoodItemCard(record: FoodRecord) {
                 Text(
                     text = record.price,
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary
+                    color = Maroon
                 )
             }
             Text(

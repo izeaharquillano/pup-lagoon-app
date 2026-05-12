@@ -45,8 +45,8 @@ class FoodRepository(private val context: Context) {
                         categories = categories
                     )
                     
-                    // Index by name
-                    nameTree.insert(record.name, record)
+                    // Index by name (lowercase for case-insensitive prefix search)
+                    nameTree.insert(record.name.lowercase(), record)
                     
                     // Index by categories
                     categories.forEach { category ->
@@ -87,7 +87,9 @@ class FoodRepository(private val context: Context) {
     }
 
     fun searchByName(name: String): List<FoodRecord>? {
-        return nameTree.search(name)
+        val query = name.lowercase()
+        val results = nameTree.searchRange(query, query + "\uFFFF")
+        return if (results.isEmpty()) null else results
     }
 
     fun searchByCategory(category: String): List<FoodRecord>? {
