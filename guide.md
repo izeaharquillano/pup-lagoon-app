@@ -1,7 +1,5 @@
 # Lagoon Food Helper - Technical Guide
 
-Welcome to the **Lagoon Food Helper** project! This guide is designed for developers who are new to Kotlin and Android development but have a basic understanding of programming concepts like variables, functions, and classes.
-
 ## 1. Project Overview
 Lagoon Food Helper is an Android application that helps students find food stalls and items in the "Lagoon" area of a university campus. It features:
 - **Search**: Real-time searching by food name.
@@ -98,5 +96,3 @@ This class uses a **computed property** called `searchResults`. Every time the u
 - **Pre-views**: You can see what your UI looks like without running the app! Check `MainActivity.kt` and look for the `@Preview` functions. Click the "Split" or "Design" tab in the top right of the editor.
 - **Logs**: If something goes wrong, use `Log.d("TAG", "Message")` and check the **Logcat** tab at the bottom of Android Studio.
 - **State**: In Compose, if you want the screen to update, you *must* change a state variable in the ViewModel. Don't try to manipulate the UI views directly!
-
-Happy Coding! 🚀
