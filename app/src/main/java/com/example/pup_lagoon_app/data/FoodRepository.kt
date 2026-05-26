@@ -9,9 +9,34 @@ class FoodRepository(private val context: Context) {
     private val categoryTree = BTree<String, FoodRecord>(5)
     private val priceTree = BTree<Double, FoodRecord>(5)
     private val allCategories = mutableSetOf<String>()
+    private val stallLocations = mutableMapOf<String, StallLocation>()
 
     init {
+        loadStallLocations()
         loadFromCsv()
+    }
+
+    private fun loadStallLocations() {
+        try {
+            val inputStream = context.assets.open("stall_locations.csv")
+            val reader = BufferedReader(InputStreamReader(inputStream))
+            reader.readLine() // Skip header
+            
+            var line: String? = reader.readLine()
+            while (line != null) {
+                val tokens = line.split(",")
+                if (tokens.size >= 3) {
+                    val id = tokens[0].trim()
+                    val x = tokens[1].trim().toFloatOrNull() ?: 0f
+                    val y = tokens[2].trim().toFloatOrNull() ?: 0f
+                    stallLocations[id] = StallLocation(id, x, y)
+                }
+                line = reader.readLine()
+            }
+            reader.close()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     private fun loadFromCsv() {
@@ -108,5 +133,9 @@ class FoodRepository(private val context: Context) {
         // Return all records by searching the entire price range or name range
         // Since we don't have a direct 'getAll' in BTree, we can use searchRange with extreme values
         return priceTree.searchRange(0.0, Double.MAX_VALUE)
+    }
+
+    fun getStallLocation(stallId: String): StallLocation? {
+        return stallLocations[stallId]
     }
 }

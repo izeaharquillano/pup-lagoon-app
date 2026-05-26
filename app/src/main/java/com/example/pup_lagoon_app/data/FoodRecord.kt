@@ -12,9 +12,11 @@ data class FoodRecord(
 
 // this is for the same item, different sizes type results
 data class MergedRecords(
+    val id: String, // Unique identifier for stable list keys
+    val stallId: String, // For location lookup
     val baseName: String,
     val stallName: String,
     val categories: List<String>,
-    val availableSizes: List<String>,
+    val sizePrices: List<String>, // Formatted as "Size - ₱Price"
     val priceRange: String
 )

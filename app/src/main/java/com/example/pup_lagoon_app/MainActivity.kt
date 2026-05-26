@@ -37,6 +37,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,6 +55,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.pup_lagoon_app.data.FoodRepository
+import com.example.pup_lagoon_app.data.MergedRecords
 import com.example.pup_lagoon_app.ui.components.FilterDialog
 import com.example.pup_lagoon_app.ui.components.FoodItemCard
 import com.example.pup_lagoon_app.ui.components.ZoomableBox
@@ -139,6 +142,7 @@ fun MainScreen() {
                 modifier = Modifier.fillMaxSize(),
                 contentAspectRatio = if (mapSize.width > 0) mapSize.width / mapSize.height else 1f,
                 initialCenterPixel = Offset(1818f, 1281f),
+                targetCenterPixel = viewModel.selectedStallLocation,
                 contentFullSize = IntSize(mapSize.width.toInt(), mapSize.height.toInt())
             ) {
                 Image(
@@ -200,7 +204,7 @@ fun MainScreen() {
                     }
 
                     IconButton(
-                        onClick = { /* Search is real-time */ },
+                        onClick = { viewModel.updateResultsVisibility(true) },
                         modifier = Modifier
                             .padding(4.dp)
                             .background(
@@ -218,10 +222,16 @@ fun MainScreen() {
                     }
                 }
 
-                val hasActiveFilterOrSearch = viewModel.searchQuery.isNotBlank() || 
-                                              viewModel.selectedCategories.isNotEmpty() || 
-                                              viewModel.minPrice.isNotBlank() || 
-                                              viewModel.maxPrice.isNotBlank()
+                val hasActiveFilterOrSearch by remember {
+                    derivedStateOf {
+                        viewModel.showResults && (
+                                viewModel.searchQuery.isNotBlank() ||
+                                        viewModel.selectedCategories.isNotEmpty() ||
+                                        viewModel.minPrice.isNotBlank() ||
+                                        viewModel.maxPrice.isNotBlank()
+                                )
+                    }
+                }
 
                 if (hasActiveFilterOrSearch) {
                     Spacer(modifier = Modifier.height(12.dp))
@@ -269,8 +279,12 @@ fun MainScreen() {
                                     state = listState,
                                     modifier = Modifier.scrollbar(listState, autoHide = true)
                                 ) {
-                                    items(viewModel.searchResults) { record ->
-                                        FoodItemCard(record)
+                                    items(
+                                        items = viewModel.searchResults,
+                                        key = { it.id },
+                                        contentType = { "food_card" }
+                                    ) { record ->
+                                        FoodItemCard(record, onClick = { viewModel.selectResult(record) })
                                     }
                                 }
                             }
