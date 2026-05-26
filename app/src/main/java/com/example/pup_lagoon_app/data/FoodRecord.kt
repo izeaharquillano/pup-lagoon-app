@@ -9,3 +9,12 @@ data class FoodRecord(
     val numericPrice: Double,
     val categories: List<String>
 )
+
+// this is for the same item, different sizes type results
+data class MergedRecords(
+    val baseName: String,
+    val stallName: String,
+    val categories: List<String>,
+    val availableSizes: List<String>,
+    val priceRange: String
+)

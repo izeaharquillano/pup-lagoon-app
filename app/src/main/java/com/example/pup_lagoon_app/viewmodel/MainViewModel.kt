@@ -5,29 +5,29 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.example.pup_lagoon_app.data.FoodRecord
+import com.example.pup_lagoon_app.data.MergedRecords
 import com.example.pup_lagoon_app.data.FoodRepository
 
 class MainViewModel(private val repository: FoodRepository) : ViewModel() {
     var searchQuery by mutableStateOf("")
         private set
-    
+
     var selectedCategories by mutableStateOf(setOf<String>())
         private set
-        
+
     var minPrice by mutableStateOf("")
         private set
-        
+
     var maxPrice by mutableStateOf("")
         private set
-        
+
     var showFilterDialog by mutableStateOf(false)
 
-    val searchResults: List<FoodRecord>
+    val searchResults: List<MergedRecords>
         get() {
             val min = minPrice.toDoubleOrNull() ?: 0.0
             val max = maxPrice.toDoubleOrNull() ?: Double.MAX_VALUE
 
-            // 1. Get initial set from B-Tree based on name or price range
             val initialSet = if (searchQuery.isNotBlank()) {
                 repository.searchByName(searchQuery) ?: emptyList()
             } else if (minPrice.isNotBlank() || maxPrice.isNotBlank()) {
@@ -38,20 +38,22 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
                 repository.getAllRecords()
             }
 
-            // 2. Filter the initial set in memory for other criteria (Intersection)
-            return initialSet.filter { record ->
+            val rawResults = initialSet.filter { record ->
                 val matchesName = if (searchQuery.isNotBlank()) {
                     record.name.contains(searchQuery, ignoreCase = true)
                 } else true
-                
+
                 val matchesCategory = if (selectedCategories.isNotEmpty()) {
                     selectedCategories.all { it in record.categories }
                 } else true
-                
+
                 val matchesPrice = record.numericPrice in min..max
-                
+
                 matchesName && matchesCategory && matchesPrice
             }.distinctBy { it.foodId }
+
+            // Group the raw results before sending to UI
+            return groupFoodRecords(rawResults)
         }
 
     fun onSearchQueryChange(newQuery: String) {
@@ -64,12 +66,62 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
         maxPrice = max
         showFilterDialog = false
     }
-    
+
     fun toggleFilterDialog() {
         showFilterDialog = !showFilterDialog
     }
-    
+
     fun getAllCategories(): List<String> {
         return repository.getAllCategories()
+    }
+
+    // --- Merging Logic Helpers ---
+
+    private fun groupFoodRecords(records: List<FoodRecord>): List<MergedRecords> {
+        return records.groupBy { it.stallName }
+            .flatMap { (stall, stallRecords) ->
+                stallRecords.groupBy { extractBaseName(it.name) }
+                    .map { (baseName, matchingRecords) ->
+
+                        val sizes = matchingRecords
+                            .mapNotNull { extractSize(it.name) }
+                            .filter { it.isNotEmpty() }
+                            .distinct()
+                            .sortedWith(Comparator { s1, s2 ->
+                                val order = listOf("S", "M", "L", "XL")
+                                val index1 = order.indexOf(s1.uppercase())
+                                val index2 = order.indexOf(s2.uppercase())
+
+                                (if (index1 == -1) 99 else index1).compareTo(if (index2 ==  -1) 99 else index2)
+                            })
+
+                        val prices = matchingRecords.map { it.numericPrice }.sorted()
+
+                        val priceDisplay = if (prices.size > 1) {
+                            "₱${String.format("%.0f", prices.first())} - ₱${String.format("%.0f", prices.last())}"
+                        } else {
+                            "₱${String.format("%.0f", prices.first())}"
+                        }
+
+                        MergedRecords   (
+                            baseName = baseName,
+                            stallName = stall,
+                            categories = matchingRecords.first().categories,
+                            availableSizes = sizes,
+                            priceRange = priceDisplay
+                        )
+                    }
+            }
+    }
+
+    private fun extractBaseName(fullName: String): String {
+        val pattern = Regex("\\s+(S|M|L|XL|[0-9]+pcs)$", RegexOption.IGNORE_CASE)
+        return fullName.replace(pattern, "").trim()
+    }
+
+    private fun extractSize(fullName: String): String {
+        val pattern = Regex("\\s+(S|M|L|XL|[0-9]+pcs)$", RegexOption.IGNORE_CASE)
+        val match = pattern.find(fullName)
+        return match?.value?.trim()?.uppercase() ?: ""
     }
 }
