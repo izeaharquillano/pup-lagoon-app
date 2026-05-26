@@ -16,6 +16,6 @@ data class MergedRecords(
     val baseName: String,
     val stallName: String,
     val categories: List<String>,
-    val availableSizes: List<String>,
+    val sizePrices: List<String>, // Formatted as "Size - ₱Price"
     val priceRange: String
 )

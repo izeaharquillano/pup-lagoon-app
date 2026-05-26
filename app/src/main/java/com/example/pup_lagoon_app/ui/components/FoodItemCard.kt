@@ -62,14 +62,14 @@ fun FoodItemCard(record: MergedRecords) {
             )
 
             // this is for displaying sizes
-            if (record.availableSizes.isNotEmpty()) {
+            if (record.sizePrices.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceVariant,
                     shape = RoundedCornerShape(4.dp)
                 ) {
                     Text(
-                        text = "Sizes: ${record.availableSizes.joinToString(", ")}",
+                        text = "Sizes: ${record.sizePrices.joinToString(", ")}",
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,

@@ -83,17 +83,22 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
                 stallRecords.groupBy { extractBaseName(it.name) }
                     .map { (baseName, matchingRecords) ->
 
-                        val sizes = matchingRecords
-                            .mapNotNull { extractSize(it.name) }
-                            .filter { it.isNotEmpty() }
-                            .distinct()
-                            .sortedWith(Comparator { s1, s2 ->
+                        val sizePriceList = matchingRecords
+                            .mapNotNull { record ->
+                                val size = extractSize(record.name)
+                                if (size.isNotEmpty()) {
+                                    size to "₱${String.format("%.0f", record.numericPrice)}"
+                                } else null
+                            }
+                            .distinctBy { it.first }
+                            .sortedWith(Comparator { p1, p2 ->
                                 val order = listOf("S", "M", "L", "XL")
-                                val index1 = order.indexOf(s1.uppercase())
-                                val index2 = order.indexOf(s2.uppercase())
+                                val index1 = order.indexOf(p1.first.uppercase())
+                                val index2 = order.indexOf(p2.first.uppercase())
 
-                                (if (index1 == -1) 99 else index1).compareTo(if (index2 ==  -1) 99 else index2)
+                                (if (index1 == -1) 99 else index1).compareTo(if (index2 == -1) 99 else index2)
                             })
+                            .map { "${it.first} - ${it.second}" }
 
                         val prices = matchingRecords.map { it.numericPrice }.sorted()
 
@@ -108,7 +113,7 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
                             baseName = baseName,
                             stallName = stall,
                             categories = matchingRecords.first().categories,
-                            availableSizes = sizes,
+                            sizePrices = sizePriceList,
                             priceRange = priceDisplay
                         )
                     }
