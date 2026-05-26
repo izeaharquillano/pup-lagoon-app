@@ -124,8 +124,12 @@ fun ZoomableBox(
 
             // Handle target jumps (clicks) - only when target changes
             LaunchedEffect(targetCenterPixel, contentFullSize) {
-                if (targetCenterPixel != null && contentFullSize != null && !isInteracting) {
+                if (targetCenterPixel != null && contentFullSize != null) {
+                    // Force interaction to false so we use animated values for the jump
+                    isInteracting = false
                     rawOffset = calculateBoundOffset(targetCenterPixel, contentFullSize)
+                    // Reset zoom to initialScale when selecting a new stall
+                    scale = initialScale
                 }
             }
 
@@ -135,7 +139,7 @@ fun ZoomableBox(
                     .pointerInput(Unit) {
                         detectTransformGestures { centroid, pan, zoom, _ ->
                             isInteracting = true
-                            
+
                             val oldScale = scale
                             val newScale = (scale * zoom).coerceIn(minScale, maxScale)
                             
