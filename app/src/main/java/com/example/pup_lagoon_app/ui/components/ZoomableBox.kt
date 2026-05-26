@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -149,11 +150,12 @@ fun ZoomableBox(
             ) {
                 content()
 
-                // Pin Overlay
+                // Pin Overlay - drawn on top of the content but within the same scaling box
                 if (targetCenterPixel != null && contentFullSize != null) {
                     val fullWidth = contentFullSize.width.toFloat()
                     val fullHeight = contentFullSize.height.toFloat()
 
+                    // These are coordinates within the baseWidth/baseHeight box (in pixels)
                     val pinX = (targetCenterPixel.x / fullWidth) * baseWidth * density
                     val pinY = (targetCenterPixel.y / fullHeight) * baseHeight * density
 
@@ -162,10 +164,20 @@ fun ZoomableBox(
                         contentDescription = "Stall Pin",
                         tint = Color.Red,
                         modifier = Modifier
-                            .size(32.dp)
+                            .size(54.dp)
                             .graphicsLayer {
-                                translationX = pinX - 16.dp.toPx()
-                                translationY = pinY - 32.dp.toPx()
+                                // Set the origin of all transformations to the bottom-center tip
+                                transformOrigin = TransformOrigin(0.5f, 1f)
+
+                                // INVERSE SCALING:
+                                // This makes the pin stay the same visual size on the screen
+                                scaleX = 1f / scale
+                                scaleY = 1f / scale
+
+                                // Position the bottom-center tip at (pinX, pinY)
+                                // Since Box is TopStart, (0,0) is top-left.
+                                translationX = pinX - 27.dp.toPx()
+                                translationY = pinY - 54.dp.toPx()
                             }
                     )
                 }
