@@ -3,6 +3,7 @@ package com.example.pup_lagoon_app.viewmodel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.derivedStateOf
 import androidx.lifecycle.ViewModel
 import com.example.pup_lagoon_app.data.FoodRecord
 import com.example.pup_lagoon_app.data.MergedRecords
@@ -23,38 +24,37 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
 
     var showFilterDialog by mutableStateOf(false)
 
-    val searchResults: List<MergedRecords>
-        get() {
-            val min = minPrice.toDoubleOrNull() ?: 0.0
-            val max = maxPrice.toDoubleOrNull() ?: Double.MAX_VALUE
+    val searchResults: List<MergedRecords> by derivedStateOf {
+        val min = minPrice.toDoubleOrNull() ?: 0.0
+        val max = maxPrice.toDoubleOrNull() ?: Double.MAX_VALUE
 
-            val initialSet = if (searchQuery.isNotBlank()) {
-                repository.searchByName(searchQuery) ?: emptyList()
-            } else if (minPrice.isNotBlank() || maxPrice.isNotBlank()) {
-                repository.searchByPriceRange(min, max)
-            } else if (selectedCategories.isNotEmpty()) {
-                repository.searchByCategory(selectedCategories.first()) ?: emptyList()
-            } else {
-                repository.getAllRecords()
-            }
-
-            val rawResults = initialSet.filter { record ->
-                val matchesName = if (searchQuery.isNotBlank()) {
-                    record.name.contains(searchQuery, ignoreCase = true)
-                } else true
-
-                val matchesCategory = if (selectedCategories.isNotEmpty()) {
-                    selectedCategories.all { it in record.categories }
-                } else true
-
-                val matchesPrice = record.numericPrice in min..max
-
-                matchesName && matchesCategory && matchesPrice
-            }.distinctBy { it.foodId }
-
-            // Group the raw results before sending to UI
-            return groupFoodRecords(rawResults)
+        val initialSet = if (searchQuery.isNotBlank()) {
+            repository.searchByName(searchQuery) ?: emptyList()
+        } else if (minPrice.isNotBlank() || maxPrice.isNotBlank()) {
+            repository.searchByPriceRange(min, max)
+        } else if (selectedCategories.isNotEmpty()) {
+            repository.searchByCategory(selectedCategories.first()) ?: emptyList()
+        } else {
+            repository.getAllRecords()
         }
+
+        val rawResults = initialSet.filter { record ->
+            val matchesName = if (searchQuery.isNotBlank()) {
+                record.name.contains(searchQuery, ignoreCase = true)
+            } else true
+
+            val matchesCategory = if (selectedCategories.isNotEmpty()) {
+                selectedCategories.all { it in record.categories }
+            } else true
+
+            val matchesPrice = record.numericPrice in min..max
+
+            matchesName && matchesCategory && matchesPrice
+        }.distinctBy { it.foodId }
+
+        // Group the raw results before sending to UI
+        groupFoodRecords(rawResults)
+    }
 
     fun onSearchQueryChange(newQuery: String) {
         searchQuery = newQuery
@@ -103,7 +103,8 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
                             "₱${String.format("%.0f", prices.first())}"
                         }
 
-                        MergedRecords   (
+                        MergedRecords(
+                            id = "${stall}_${baseName}",
                             baseName = baseName,
                             stallName = stall,
                             categories = matchingRecords.first().categories,

@@ -37,6 +37,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -218,10 +220,14 @@ fun MainScreen() {
                     }
                 }
 
-                val hasActiveFilterOrSearch = viewModel.searchQuery.isNotBlank() || 
-                                              viewModel.selectedCategories.isNotEmpty() || 
-                                              viewModel.minPrice.isNotBlank() || 
-                                              viewModel.maxPrice.isNotBlank()
+                val hasActiveFilterOrSearch by remember {
+                    derivedStateOf {
+                        viewModel.searchQuery.isNotBlank() ||
+                                viewModel.selectedCategories.isNotEmpty() ||
+                                viewModel.minPrice.isNotBlank() ||
+                                viewModel.maxPrice.isNotBlank()
+                    }
+                }
 
                 if (hasActiveFilterOrSearch) {
                     Spacer(modifier = Modifier.height(12.dp))
@@ -269,7 +275,11 @@ fun MainScreen() {
                                     state = listState,
                                     modifier = Modifier.scrollbar(listState, autoHide = true)
                                 ) {
-                                    items(viewModel.searchResults) { record ->
+                                    items(
+                                        items = viewModel.searchResults,
+                                        key = { it.id },
+                                        contentType = { "food_card" }
+                                    ) { record ->
                                         FoodItemCard(record)
                                     }
                                 }
