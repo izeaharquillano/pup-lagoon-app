@@ -1,5 +1,6 @@
 package com.example.pup_lagoon_app.ui.components
 
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.animation.core.tween
@@ -49,14 +50,20 @@ fun ZoomableBox(
     // Animate the offset for smooth panning when a stall is selected
     val animatedOffset by animateOffsetAsState(
         targetValue = rawOffset,
-        animationSpec = tween(durationMillis = 600),
+        animationSpec = tween(
+            durationMillis = 1000,
+            easing = FastOutSlowInEasing
+        ),
         label = "map_offset"
     )
 
     // Animate the scale for smooth zooming
     val animatedScale by animateFloatAsState(
         targetValue = scale,
-        animationSpec = tween(durationMillis = 600),
+        animationSpec = tween(
+            durationMillis = 1000,
+            easing = FastOutSlowInEasing
+        ),
         label = "map_scale"
     )
 
@@ -115,9 +122,9 @@ fun ZoomableBox(
                 }
             }
 
-            // Handle target jumps (clicks)
-            LaunchedEffect(targetCenterPixel, contentFullSize, scale) {
-                if (targetCenterPixel != null && contentFullSize != null) {
+            // Handle target jumps (clicks) - only when target changes
+            LaunchedEffect(targetCenterPixel, contentFullSize) {
+                if (targetCenterPixel != null && contentFullSize != null && !isInteracting) {
                     rawOffset = calculateBoundOffset(targetCenterPixel, contentFullSize)
                 }
             }
