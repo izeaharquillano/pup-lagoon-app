@@ -1,5 +1,8 @@
 package com.example.pup_lagoon_app.ui.components
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,14 +24,17 @@ import com.example.pup_lagoon_app.data.MergedRecords
 import com.example.pup_lagoon_app.ui.theme.Maroon
 
 @Composable
-fun FoodItemCard(record: MergedRecords) {
+fun FoodItemCard(record: MergedRecords, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = 4.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { onClick() },
         colors = CardDefaults.cardColors(
             containerColor = Color.White
         ),
+        border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.5f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(

@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.ui.geometry.Offset
 import androidx.lifecycle.ViewModel
 import com.example.pup_lagoon_app.data.FoodRecord
 import com.example.pup_lagoon_app.data.MergedRecords
@@ -23,6 +24,12 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
         private set
 
     var showFilterDialog by mutableStateOf(false)
+
+    var showResults by mutableStateOf(true)
+        private set
+
+    var selectedStallLocation by mutableStateOf<Offset?>(null)
+        private set
 
     val searchResults: List<MergedRecords> by derivedStateOf {
         val min = minPrice.toDoubleOrNull() ?: 0.0
@@ -58,6 +65,7 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
 
     fun onSearchQueryChange(newQuery: String) {
         searchQuery = newQuery
+        showResults = true
     }
 
     fun onApplyFilters(categories: Set<String>, min: String, max: String) {
@@ -65,10 +73,25 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
         minPrice = min
         maxPrice = max
         showFilterDialog = false
+        showResults = true
     }
 
     fun toggleFilterDialog() {
         showFilterDialog = !showFilterDialog
+    }
+
+    fun selectResult(record: MergedRecords) {
+        val location = repository.getStallLocation(record.stallId)
+        selectedStallLocation = location?.toOffset()
+        showResults = false
+    }
+
+    fun updateResultsVisibility(show: Boolean) {
+        showResults = show
+    }
+
+    fun clearSelection() {
+        selectedStallLocation = null
     }
 
     fun getAllCategories(): List<String> {
@@ -110,6 +133,7 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
 
                         MergedRecords(
                             id = "${stall}_${baseName}",
+                            stallId = matchingRecords.first().stallId,
                             baseName = baseName,
                             stallName = stall,
                             categories = matchingRecords.first().categories,

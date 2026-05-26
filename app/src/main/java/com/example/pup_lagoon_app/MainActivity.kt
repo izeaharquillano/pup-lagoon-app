@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.pup_lagoon_app.data.FoodRepository
+import com.example.pup_lagoon_app.data.MergedRecords
 import com.example.pup_lagoon_app.ui.components.FilterDialog
 import com.example.pup_lagoon_app.ui.components.FoodItemCard
 import com.example.pup_lagoon_app.ui.components.ZoomableBox
@@ -141,6 +142,7 @@ fun MainScreen() {
                 modifier = Modifier.fillMaxSize(),
                 contentAspectRatio = if (mapSize.width > 0) mapSize.width / mapSize.height else 1f,
                 initialCenterPixel = Offset(1818f, 1281f),
+                targetCenterPixel = viewModel.selectedStallLocation,
                 contentFullSize = IntSize(mapSize.width.toInt(), mapSize.height.toInt())
             ) {
                 Image(
@@ -202,7 +204,7 @@ fun MainScreen() {
                     }
 
                     IconButton(
-                        onClick = { /* Search is real-time */ },
+                        onClick = { viewModel.updateResultsVisibility(true) },
                         modifier = Modifier
                             .padding(4.dp)
                             .background(
@@ -222,10 +224,12 @@ fun MainScreen() {
 
                 val hasActiveFilterOrSearch by remember {
                     derivedStateOf {
-                        viewModel.searchQuery.isNotBlank() ||
-                                viewModel.selectedCategories.isNotEmpty() ||
-                                viewModel.minPrice.isNotBlank() ||
-                                viewModel.maxPrice.isNotBlank()
+                        viewModel.showResults && (
+                                viewModel.searchQuery.isNotBlank() ||
+                                        viewModel.selectedCategories.isNotEmpty() ||
+                                        viewModel.minPrice.isNotBlank() ||
+                                        viewModel.maxPrice.isNotBlank()
+                                )
                     }
                 }
 
@@ -280,7 +284,7 @@ fun MainScreen() {
                                         key = { it.id },
                                         contentType = { "food_card" }
                                     ) { record ->
-                                        FoodItemCard(record)
+                                        FoodItemCard(record, onClick = { viewModel.selectResult(record) })
                                     }
                                 }
                             }
