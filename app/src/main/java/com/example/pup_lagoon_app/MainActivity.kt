@@ -41,6 +41,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
@@ -48,11 +49,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.pup_lagoon_app.data.FoodRepository
 import com.example.pup_lagoon_app.ui.components.FilterDialog
 import com.example.pup_lagoon_app.ui.components.FoodItemCard
+import com.example.pup_lagoon_app.ui.components.ZoomableBox
 import com.example.pup_lagoon_app.ui.theme.Maroon
 import com.example.pup_lagoon_app.ui.theme.PuplagoonappTheme
 import com.example.pup_lagoon_app.ui.utils.scrollbar
@@ -129,13 +132,23 @@ fun MainScreen() {
                 .padding(innerPadding)
         ) {
             // LAYER 1: Background Map Image
-            Image(
-                painter = painterResource(id = R.drawable.university_map),
-                contentDescription = "University Map",
+            val mapPainter = painterResource(id = R.drawable.university_map)
+            val mapSize = mapPainter.intrinsicSize
+            
+            ZoomableBox(
                 modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-                alpha = 1.0f
-            )
+                contentAspectRatio = if (mapSize.width > 0) mapSize.width / mapSize.height else 1f,
+                initialCenterPixel = Offset(1818f, 1281f),
+                contentFullSize = IntSize(mapSize.width.toInt(), mapSize.height.toInt())
+            ) {
+                Image(
+                    painter = mapPainter,
+                    contentDescription = "University Map",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.FillBounds, // Fill the ZoomableBox's base size
+                    alpha = 1.0f
+                )
+            }
 
             // LAYER 2: UI Content
             Column(
