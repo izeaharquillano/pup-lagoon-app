@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -50,6 +51,7 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -164,21 +166,38 @@ fun MainScreen() {
                 // Search Bar Area
                 Row(
                     modifier = Modifier
-                        .fillMaxWidth(0.9f)
+                        .fillMaxWidth(0.95f)
                         .background(
                             Color.White,
                             RoundedCornerShape(28.dp)
                         )
-                        .padding(horizontal = 4.dp),
+                        .padding(horizontal = 2.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     OutlinedTextField(
                         value = viewModel.searchQuery,
                         onValueChange = { viewModel.onSearchQueryChange(it) },
-                        placeholder = { Text("Search by food name") },
+                        placeholder = { 
+                            Text(
+                                "Search by food name",
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            ) 
+                        },
                         modifier = Modifier
                             .weight(1f),
                         singleLine = true,
+                        trailingIcon = {
+                            if (viewModel.searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Clear,
+                                        contentDescription = "Clear search",
+                                        tint = Maroon
+                                    )
+                                }
+                            }
+                        },
                         shape = RoundedCornerShape(28.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedContainerColor = Color.Transparent,
@@ -195,11 +214,7 @@ fun MainScreen() {
                         Icon(
                             imageVector = Icons.Default.FilterList,
                             contentDescription = "Filter",
-                            tint = if (viewModel.selectedCategories.isNotEmpty() || viewModel.minPrice.isNotBlank() || viewModel.maxPrice.isNotBlank()) {
-                                Maroon
-                            } else {
-                                MaterialTheme.colorScheme.onSurface
-                            }
+                            tint = Maroon
                         )
                     }
 

@@ -1,5 +1,7 @@
 package com.example.pup_lagoon_app.ui.components
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -32,28 +34,42 @@ import androidx.compose.ui.unit.dp
 fun ZoomableBox(
     modifier: Modifier = Modifier,
     contentAspectRatio: Float,
-    minScale: Float = 1.5f,
+    minScale: Float = 1.25f,
     maxScale: Float = 4f,
-    initialScale: Float = 2f,
+    initialScale: Float = 2.0f,
     initialCenterPixel: Offset? = null,
     targetCenterPixel: Offset? = null,
     contentFullSize: IntSize? = null,
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     var scale by remember { mutableFloatStateOf(initialScale) }
     var rawOffset by remember { mutableStateOf(Offset.Zero) }
     var initialized by remember { mutableStateOf(false) }
-    var isInteracting by remember { mutableStateOf(false) }
+    var isInteracting by remember { mutableStateOf(value = false) }
 
     // Animate the offset for smooth panning when a stall is selected
     val animatedOffset by animateOffsetAsState(
         targetValue = rawOffset,
-        animationSpec = tween(durationMillis = 800),
+        animationSpec = tween(
+            durationMillis = 1000,
+            easing = FastOutSlowInEasing
+        ),
         label = "map_offset"
     )
 
-    // Use raw offset while interacting for zero lag, animated offset otherwise
+    // Animate the scale for smooth zooming
+    val animatedScale by animateFloatAsState(
+        targetValue = scale,
+        animationSpec = tween(
+            durationMillis = 1000,
+            easing = FastOutSlowInEasing
+        ),
+        label = "map_scale"
+    )
+
+    // Use raw values while interacting for zero lag, animated values otherwise
     val currentOffset = if (isInteracting) rawOffset else animatedOffset
+    val currentScale = if (isInteracting) scale else animatedScale
 
     BoxWithConstraints(
         modifier = modifier,
@@ -63,7 +79,7 @@ fun ZoomableBox(
         val containerHeight = maxHeight.value
         val density = LocalDensity.current.density
 
-        if (containerWidth > 0 && containerHeight > 0) {
+        if ((containerWidth > 0) && (containerHeight > 0)) {
             val containerAspectRatio = containerWidth / containerHeight
             val safeContentAspectRatio = if (contentAspectRatio > 0) contentAspectRatio else 1f
 
@@ -106,10 +122,14 @@ fun ZoomableBox(
                 }
             }
 
-            // Handle target jumps (clicks)
-            LaunchedEffect(targetCenterPixel, contentFullSize, scale) {
+            // Handle target jumps (clicks) - only when target changes
+            LaunchedEffect(targetCenterPixel, contentFullSize) {
                 if (targetCenterPixel != null && contentFullSize != null) {
+                    // Force interaction to false so we use animated values for the jump
+                    isInteracting = false
                     rawOffset = calculateBoundOffset(targetCenterPixel, contentFullSize)
+                    // Reset zoom to initialScale when selecting a new stall
+                    scale = initialScale
                 }
             }
 
@@ -119,14 +139,25 @@ fun ZoomableBox(
                     .pointerInput(Unit) {
                         detectTransformGestures { centroid, pan, zoom, _ ->
                             isInteracting = true
+
                             val oldScale = scale
                             val newScale = (scale * zoom).coerceIn(minScale, maxScale)
-                            scale = newScale
-
-                            val newOffset = (rawOffset + centroid / oldScale) - (centroid / newScale + pan / oldScale)
-
+                            
                             val baseWidthPx = baseWidth * density
                             val baseHeightPx = baseHeight * density
+                            
+                            // Centroid relative to the center of the content box
+                            val relativeCentroid = Offset(
+                                centroid.x - baseWidthPx / 2f,
+                                centroid.y - baseHeightPx / 2f
+                            )
+
+                            // Correctly calculate new offset to keep the point under the fingers
+                            val newOffset = (rawOffset + relativeCentroid / oldScale) - 
+                                           (relativeCentroid / newScale + pan / oldScale)
+
+                            scale = newScale
+
                             val containerWidthPx = containerWidth * density
                             val containerHeightPx = containerHeight * density
 
@@ -142,10 +173,10 @@ fun ZoomableBox(
                         isInteracting = false
                     }
                     .graphicsLayer {
-                        scaleX = scale
-                        scaleY = scale
-                        translationX = -currentOffset.x * scale
-                        translationY = -currentOffset.y * scale
+                        scaleX = currentScale
+                        scaleY = currentScale
+                        translationX = -currentOffset.x * currentScale
+                        translationY = -currentOffset.y * currentScale
                     }
             ) {
                 content()
@@ -171,8 +202,8 @@ fun ZoomableBox(
 
                                 // INVERSE SCALING:
                                 // This makes the pin stay the same visual size on the screen
-                                scaleX = 1f / scale
-                                scaleY = 1f / scale
+                                scaleX = 1f / currentScale
+                                scaleY = 1f / currentScale
 
                                 // Position the bottom-center tip at (pinX, pinY)
                                 // Since Box is TopStart, (0,0) is top-left.
