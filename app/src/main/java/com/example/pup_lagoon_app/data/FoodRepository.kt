@@ -111,18 +111,52 @@ class FoodRepository(private val context: Context) {
         return result
     }
 
-    fun searchByName(name: String): List<FoodRecord>? {
-        val query = name.lowercase()
-        val results = nameTree.searchRange(query, query + "\uFFFF")
-        return if (results.isEmpty()) null else results
-    }
+    fun search(
+        nameQuery: String = "",
+        selectedCategories: Set<String> = emptySet(),
+        minPrice: Double = 0.0,
+        maxPrice: Double = Double.MAX_VALUE
+    ): List<FoodRecord> {
+        val predicate: (FoodRecord) -> Boolean = { record ->
+            val matchesName = if (nameQuery.isNotBlank()) {
+                record.name.contains(nameQuery, ignoreCase = true)
+            } else true
+            
+            val matchesCategory = if (selectedCategories.isNotEmpty()) {
+                selectedCategories.all { it in record.categories }
+            } else true
+            
+            val matchesPrice = record.numericPrice in minPrice..maxPrice
+            
+            matchesName && matchesCategory && matchesPrice
+        }
 
-    fun searchByCategory(category: String): List<FoodRecord>? {
-        return categoryTree.search(category)
-    }
-
-    fun searchByPriceRange(min: Double, max: Double): List<FoodRecord> {
-        return priceTree.searchRange(min, max)
+        return when {
+            // If specific categories are selected, use categoryTree for one of them
+            selectedCategories.isNotEmpty() -> {
+                // Pick one category to search in the tree, then filter others with predicate
+                val firstCategory = selectedCategories.first()
+                categoryTree.search(firstCategory, predicate)
+            }
+            
+            // If price range is somewhat restrictive, use priceTree
+            // (In this case, we always use it if price is specified to show B-tree usage)
+            minPrice > 0.0 || maxPrice < Double.MAX_VALUE -> {
+                priceTree.searchRange(minPrice, maxPrice, predicate)
+            }
+            
+            // If name is provided and nothing else is very restrictive
+            nameQuery.isNotBlank() -> {
+                // Note: B-tree search by name prefix might be faster, but let's stick to priceTree/categoryTree 
+                // or just scan if needed. Actually, nameTree is good for prefix.
+                // But for general containment, a scan or priceTree is fine.
+                priceTree.searchRange(0.0, Double.MAX_VALUE, predicate)
+            }
+            
+            else -> {
+                priceTree.searchRange(0.0, Double.MAX_VALUE, predicate)
+            }
+        }
     }
 
     fun getAllCategories(): List<String> {
@@ -130,8 +164,6 @@ class FoodRepository(private val context: Context) {
     }
 
     fun getAllRecords(): List<FoodRecord> {
-        // Return all records by searching the entire price range or name range
-        // Since we don't have a direct 'getAll' in BTree, we can use searchRange with extreme values
         return priceTree.searchRange(0.0, Double.MAX_VALUE)
     }
 

@@ -17,28 +17,32 @@ class BTree<K : Comparable<K>, V>(private val t: Int) {
         }
     }
 
-    fun search(k: K): List<V>? {
-        return root?.let { search(it, k) }
-    }
-
-    private fun search(x: Node<K, V>, k: K): List<V>? {
-        val i = x.findKey(k)
-        if (i < x.keys.size && x.keys[i] == k) {
-            return x.values[i]
-        }
-        if (x.isLeaf) {
-            return null
-        }
-        return search(x.children[i], k)
-    }
-
-    fun searchRange(start: K, end: K): List<V> {
+    fun search(k: K, predicate: (V) -> Boolean = { true }): List<V> {
         val result = mutableListOf<V>()
-        root?.let { searchRange(it, start, end, result) }
+        root?.let { search(it, k, predicate, result) }
         return result
     }
 
-    private fun searchRange(x: Node<K, V>, start: K, end: K, result: MutableList<V>) {
+    private fun search(x: Node<K, V>, k: K, predicate: (V) -> Boolean, result: MutableList<V>) {
+        val i = x.findKey(k)
+        if (i < x.keys.size && x.keys[i] == k) {
+            x.values[i].forEach { if (predicate(it)) result.add(it) }
+            // Do NOT return here if you want to support non-unique keys if B-tree structure allows it.
+            // But standard B-tree search for a key finds ONE node. 
+            // Our implementation stores multiples in values[i].
+        }
+        if (!x.isLeaf) {
+            search(x.children[i], k, predicate, result)
+        }
+    }
+
+    fun searchRange(start: K, end: K, predicate: (V) -> Boolean = { true }): List<V> {
+        val result = mutableListOf<V>()
+        root?.let { searchRange(it, start, end, predicate, result) }
+        return result
+    }
+
+    private fun searchRange(x: Node<K, V>, start: K, end: K, predicate: (V) -> Boolean, result: MutableList<V>) {
         var i = 0
         while (i < x.keys.size && x.keys[i] < start) {
             i++
@@ -46,14 +50,14 @@ class BTree<K : Comparable<K>, V>(private val t: Int) {
 
         while (i < x.keys.size && x.keys[i] <= end) {
             if (!x.isLeaf) {
-                searchRange(x.children[i], start, end, result)
+                searchRange(x.children[i], start, end, predicate, result)
             }
-            result.addAll(x.values[i])
+            x.values[i].forEach { if (predicate(it)) result.add(it) }
             i++
         }
 
         if (!x.isLeaf) {
-            searchRange(x.children[i], start, end, result)
+            searchRange(x.children[i], start, end, predicate, result)
         }
     }
 

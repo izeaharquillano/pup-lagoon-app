@@ -11,46 +11,7 @@ import com.example.pup_lagoon_app.data.MergedRecords
 import com.example.pup_lagoon_app.data.FoodRepository
 
 
-class TrigramSearchIndex(records: List<FoodRecord>) {
-
-    private val index = HashMap<String, MutableList<String>>()
-    private val recordMap = HashMap<String, FoodRecord>()
-
-    init {
-        records.forEach { record ->
-            recordMap[record.foodId] = record
-            trigrams(record.name.lowercase()).forEach { tri ->
-                index.getOrPut(tri) { mutableListOf() }.add(record.foodId)
-            }
-        }
-    }
-
-    fun search(query: String, topN: Int = 20): List<FoodRecord> {
-        val queryTrigrams = trigrams(query.lowercase())
-        val scores = HashMap<String, Int>()
-
-        queryTrigrams.forEach { tri ->
-            index[tri]?.forEach { id ->
-                scores[id] = (scores[id] ?: 0) + 1
-            }
-        }
-
-        return scores.entries
-            .sortedByDescending { it.value }
-            .take(topN)
-            .mapNotNull { recordMap[it.key] }
-    }
-
-    private fun trigrams(s: String): List<String> {
-        if (s.length < 3) return listOf(s.padEnd(3))
-        return (0..s.length - 3).map { s.substring(it, it + 3) }
-    }
-}
-
 class MainViewModel(private val repository: FoodRepository) : ViewModel() {
-
-    // Built once when the ViewModel is created
-    private val searchIndex = TrigramSearchIndex(repository.getAllRecords())
 
     var searchQuery by mutableStateOf("")
         private set
@@ -76,23 +37,13 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
         val min = minPrice.toDoubleOrNull() ?: 0.0
         val max = maxPrice.toDoubleOrNull() ?: Double.MAX_VALUE
 
-        // Use trigram search if there's a query, otherwise fetch everything
-        val initialSet = if (searchQuery.isNotBlank()) {
-            searchIndex.search(searchQuery)
-        } else {
-            repository.getAllRecords()
-        }
-
-        // Category and price filters still applied on top
-        val rawResults = initialSet.filter { record ->
-            val matchesCategory = if (selectedCategories.isNotEmpty()) {
-                selectedCategories.all { it in record.categories }
-            } else true
-
-            val matchesPrice = record.numericPrice in min..max
-
-            matchesCategory && matchesPrice
-        }.distinctBy { it.foodId }
+        // Use the repository's unified search which leverages B-trees for price and category
+        val rawResults = repository.search(
+            nameQuery = searchQuery,
+            selectedCategories = selectedCategories,
+            minPrice = min,
+            maxPrice = max
+        ).distinctBy { it.foodId }
 
         groupFoodRecords(rawResults)
     }
