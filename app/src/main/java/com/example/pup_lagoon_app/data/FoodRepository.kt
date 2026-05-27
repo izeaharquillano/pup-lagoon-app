@@ -117,9 +117,10 @@ class FoodRepository(private val context: Context) {
         minPrice: Double = 0.0,
         maxPrice: Double = Double.MAX_VALUE
     ): List<FoodRecord> {
+        val queryLower = nameQuery.lowercase()
         val predicate: (FoodRecord) -> Boolean = { record ->
-            val matchesName = if (nameQuery.isNotBlank()) {
-                record.name.contains(nameQuery, ignoreCase = true)
+            val matchesName = if (queryLower.isNotBlank()) {
+                record.name.contains(queryLower, ignoreCase = true)
             } else true
             
             val matchesCategory = if (selectedCategories.isNotEmpty()) {
@@ -134,23 +135,31 @@ class FoodRepository(private val context: Context) {
         return when {
             // If specific categories are selected, use categoryTree for one of them
             selectedCategories.isNotEmpty() -> {
-                // Pick one category to search in the tree, then filter others with predicate
                 val firstCategory = selectedCategories.first()
                 categoryTree.search(firstCategory, predicate)
             }
             
-            // If price range is somewhat restrictive, use priceTree
-            // (In this case, we always use it if price is specified to show B-tree usage)
+            // If price range is restrictive, use priceTree
             minPrice > 0.0 || maxPrice < Double.MAX_VALUE -> {
                 priceTree.searchRange(minPrice, maxPrice, predicate)
             }
             
-            // If name is provided and nothing else is very restrictive
-            nameQuery.isNotBlank() -> {
-                // Note: B-tree search by name prefix might be faster, but let's stick to priceTree/categoryTree 
-                // or just scan if needed. Actually, nameTree is good for prefix.
-                // But for general containment, a scan or priceTree is fine.
-                priceTree.searchRange(0.0, Double.MAX_VALUE, predicate)
+            // Optimization: If name is provided and nothing else is restrictive,
+            // we use the nameTree to jump to prefix matches first.
+            queryLower.isNotBlank() -> {
+                // 1. Get prefix matches instantly from the nameTree (Case-insensitive prefix)
+                val prefixResults = nameTree.searchRange(queryLower, queryLower + "\uFFFF", predicate)
+                
+                // 2. We still need infix matches (e.g., search "burger" finds "Cheeseburger").
+                // Since these could be anywhere, we scan the whole repository,
+                // but we skip the ones we already found via prefix to avoid duplicates.
+                val prefixIds = prefixResults.map { it.foodId }.toSet()
+                
+                val infixResults = priceTree.searchRange(0.0, Double.MAX_VALUE) { record ->
+                    record.foodId !in prefixIds && predicate(record)
+                }
+                
+                prefixResults + infixResults
             }
             
             else -> {
