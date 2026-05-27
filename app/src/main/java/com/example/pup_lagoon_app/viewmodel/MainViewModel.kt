@@ -10,7 +10,48 @@ import com.example.pup_lagoon_app.data.FoodRecord
 import com.example.pup_lagoon_app.data.MergedRecords
 import com.example.pup_lagoon_app.data.FoodRepository
 
+
+class TrigramSearchIndex(records: List<FoodRecord>) {
+
+    private val index = HashMap<String, MutableList<String>>()
+    private val recordMap = HashMap<String, FoodRecord>()
+
+    init {
+        records.forEach { record ->
+            recordMap[record.foodId] = record
+            trigrams(record.name.lowercase()).forEach { tri ->
+                index.getOrPut(tri) { mutableListOf() }.add(record.foodId)
+            }
+        }
+    }
+
+    fun search(query: String, topN: Int = 20): List<FoodRecord> {
+        val queryTrigrams = trigrams(query.lowercase())
+        val scores = HashMap<String, Int>()
+
+        queryTrigrams.forEach { tri ->
+            index[tri]?.forEach { id ->
+                scores[id] = (scores[id] ?: 0) + 1
+            }
+        }
+
+        return scores.entries
+            .sortedByDescending { it.value }
+            .take(topN)
+            .mapNotNull { recordMap[it.key] }
+    }
+
+    private fun trigrams(s: String): List<String> {
+        if (s.length < 3) return listOf(s.padEnd(3))
+        return (0..s.length - 3).map { s.substring(it, it + 3) }
+    }
+}
+
 class MainViewModel(private val repository: FoodRepository) : ViewModel() {
+
+    // Built once when the ViewModel is created
+    private val searchIndex = TrigramSearchIndex(repository.getAllRecords())
+
     var searchQuery by mutableStateOf("")
         private set
 
@@ -35,31 +76,24 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
         val min = minPrice.toDoubleOrNull() ?: 0.0
         val max = maxPrice.toDoubleOrNull() ?: Double.MAX_VALUE
 
+        // Use trigram search if there's a query, otherwise fetch everything
         val initialSet = if (searchQuery.isNotBlank()) {
-            repository.searchByName(searchQuery) ?: emptyList()
-        } else if (minPrice.isNotBlank() || maxPrice.isNotBlank()) {
-            repository.searchByPriceRange(min, max)
-        } else if (selectedCategories.isNotEmpty()) {
-            repository.searchByCategory(selectedCategories.first()) ?: emptyList()
+            searchIndex.search(searchQuery)
         } else {
             repository.getAllRecords()
         }
 
+        // Category and price filters still applied on top
         val rawResults = initialSet.filter { record ->
-            val matchesName = if (searchQuery.isNotBlank()) {
-                record.name.contains(searchQuery, ignoreCase = true)
-            } else true
-
             val matchesCategory = if (selectedCategories.isNotEmpty()) {
                 selectedCategories.all { it in record.categories }
             } else true
 
             val matchesPrice = record.numericPrice in min..max
 
-            matchesName && matchesCategory && matchesPrice
+            matchesCategory && matchesPrice
         }.distinctBy { it.foodId }
 
-        // Group the raw results before sending to UI
         groupFoodRecords(rawResults)
     }
 
@@ -98,7 +132,7 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
         return repository.getAllCategories()
     }
 
-    // --- Merging Logic Helpers ---
+
 
     private fun groupFoodRecords(records: List<FoodRecord>): List<MergedRecords> {
         return records.groupBy { it.stallName }
@@ -118,7 +152,6 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
                                 val order = listOf("S", "M", "L", "XL")
                                 val index1 = order.indexOf(p1.first.uppercase())
                                 val index2 = order.indexOf(p2.first.uppercase())
-
                                 (if (index1 == -1) 99 else index1).compareTo(if (index2 == -1) 99 else index2)
                             })
                             .map { "${it.first} - ${it.second}" }
