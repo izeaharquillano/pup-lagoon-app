@@ -51,6 +51,9 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntSize
@@ -187,6 +190,8 @@ fun MainScreen() {
                         modifier = Modifier
                             .weight(1f),
                         singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { viewModel.performManualSearch() }),
                         trailingIcon = {
                             if (viewModel.searchQuery.isNotEmpty()) {
                                 IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
@@ -219,7 +224,7 @@ fun MainScreen() {
                     }
 
                     IconButton(
-                        onClick = { viewModel.updateResultsVisibility(true) },
+                        onClick = { viewModel.performManualSearch() },
                         modifier = Modifier
                             .padding(4.dp)
                             .background(
@@ -239,12 +244,17 @@ fun MainScreen() {
 
                 val hasActiveFilterOrSearch by remember {
                     derivedStateOf {
+                        // Logic for when to show the results surface at all:
+                        // 1. Manual search was triggered
+                        // 2. Auto-search is active (>= 2 chars)
+                        // 3. Filters are active
                         viewModel.showResults && (
-                                viewModel.searchQuery.isNotBlank() ||
-                                        viewModel.selectedCategories.isNotEmpty() ||
-                                        viewModel.minPrice.isNotBlank() ||
-                                        viewModel.maxPrice.isNotBlank()
-                                )
+                            viewModel.searchResults.isNotEmpty() || // Always show if we have results
+                            (viewModel.searchQuery.length >= 2) || // Show "No results" for auto-search
+                            viewModel.selectedCategories.isNotEmpty() ||
+                            viewModel.minPrice.isNotBlank() ||
+                            viewModel.maxPrice.isNotBlank()
+                        )
                     }
                 }
 

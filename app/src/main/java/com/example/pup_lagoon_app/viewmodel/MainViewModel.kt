@@ -30,6 +30,8 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
     var showResults by mutableStateOf(true)
         private set
 
+    private var manualSearchActive by mutableStateOf(false)
+
     var selectedStallLocation by mutableStateOf<Offset?>(null)
         private set
 
@@ -37,7 +39,20 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
         val min = minPrice.toDoubleOrNull() ?: 0.0
         val max = maxPrice.toDoubleOrNull() ?: Double.MAX_VALUE
 
-        // Use the repository's unified search which leverages B-trees for price and category
+        // Logic:
+        // 1. Search if query >= 2 characters.
+        // 2. OR search if manual search was triggered (button/enter).
+        // 3. OR search if filters are active (even with empty query).
+        
+        val isQueryLongEnough = searchQuery.length >= 2
+        val isFilterActive = selectedCategories.isNotEmpty() || minPrice.isNotBlank() || maxPrice.isNotBlank()
+        
+        val shouldSearch = isQueryLongEnough || manualSearchActive || isFilterActive
+
+        if (!shouldSearch) {
+            return@derivedStateOf emptyList<MergedRecords>()
+        }
+
         val rawResults = repository.search(
             nameQuery = searchQuery,
             selectedCategories = selectedCategories,
@@ -50,6 +65,12 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
 
     fun onSearchQueryChange(newQuery: String) {
         searchQuery = newQuery
+        manualSearchActive = false // Reset manual trigger on typing
+        showResults = true
+    }
+
+    fun performManualSearch() {
+        manualSearchActive = true
         showResults = true
     }
 
