@@ -183,4 +183,17 @@ class FoodRepository(private val context: Context) {
     fun getStallLocation(stallId: String): StallLocation? {
         return stallLocations[stallId]
     }
+
+    fun getStallImages(stallId: String): List<String> {
+        return try {
+            val path = "stalls/$stallId"
+            context.assets.list(path)
+                ?.filter { it.endsWith(".jpg", ignoreCase = true) || it.endsWith(".png", ignoreCase = true) || it.endsWith(".webp", ignoreCase = true) }
+                ?.map { "file:///android_asset/$path/$it" }
+                ?.sorted()
+                ?: emptyList()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
 }

@@ -41,6 +41,9 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
     var selectedStallName by mutableStateOf<String?>(null)
         private set
 
+    var selectedStallImages by mutableStateOf<List<String>>(emptyList())
+        private set
+
     var showBottomSheet by mutableStateOf(false)
 
     val searchResults: List<MergedRecords> by derivedStateOf {
@@ -99,6 +102,7 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
         selectedStallLocation = location?.toOffset()
         selectedStallId = record.stallId
         selectedStallName = record.stallName
+        selectedStallImages = repository.getStallImages(record.stallId)
         showResults = false
         showBottomSheet = true
     }
@@ -117,6 +121,7 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
         selectedStallLocation = null
         selectedStallId = null
         selectedStallName = null
+        selectedStallImages = emptyList()
         showBottomSheet = false
     }
 

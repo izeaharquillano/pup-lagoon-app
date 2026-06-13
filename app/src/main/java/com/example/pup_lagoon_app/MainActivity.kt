@@ -408,7 +408,8 @@ fun MainScreen() {
                             stallName = viewModel.selectedStallName ?: "",
                             foods = viewModel.getStallFoods(),
                             onDismiss = { viewModel.clearSelection() },
-                            showDetails = anchoredDraggableState.targetValue != SheetStage.Minimized
+                            showDetails = anchoredDraggableState.targetValue != SheetStage.Minimized,
+                            stallImages = viewModel.selectedStallImages
                         )
                     }
                 }
