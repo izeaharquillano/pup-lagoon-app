@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.example.pup_lagoon_app.SheetStage
 import com.example.pup_lagoon_app.data.MergedRecords
 
 @Composable
@@ -46,8 +47,11 @@ fun StallBottomSheetContent(
     foods: List<MergedRecords>,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
-    stallImages: List<String> = emptyList()
+    stallImages: List<String> = emptyList(),
+    sheetStage: SheetStage = SheetStage.Halfway
 ) {
+    val isMinimized = sheetStage == SheetStage.Minimized
+    
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -57,94 +61,103 @@ fun StallBottomSheetContent(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 8.dp),
+                .padding(
+                    horizontal = 20.dp, 
+                    vertical = if (isMinimized) 4.dp else 8.dp
+                ),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 imageVector = Icons.Default.Storefront,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(40.dp)
+                modifier = Modifier.size(if (isMinimized) 24.dp else 40.dp)
             )
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(if (isMinimized) 8.dp else 12.dp))
             Column(
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
                     text = stallName,
-                    style = MaterialTheme.typography.titleLarge,
+                    style = if (isMinimized) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = Color.Black
                 )
-                Text(
-                    text = "Stall #$stallId",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray
-                )
+                if (!isMinimized) {
+                    Text(
+                        text = "Stall #$stallId",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray
+                    )
+                }
             }
+            
             IconButton(
                 onClick = onDismiss,
-                modifier = Modifier.size(48.dp)
+                modifier = Modifier.size(if (isMinimized) 32.dp else 48.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Close",
-                    tint = Color.Gray
+                    tint = Color.Gray,
+                    modifier = Modifier.size(if (isMinimized) 18.dp else 24.dp)
                 )
             }
         }
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .weight(1f)
-        ) {
-            Spacer(modifier = Modifier.height(16.dp))
+        if (!isMinimized) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .weight(1f)
+            ) {
+                Spacer(modifier = Modifier.height(16.dp))
 
-            // Stall Photos Section
-            if (stallImages.isNotEmpty()) {
+                // Stall Photos Section
+                if (stallImages.isNotEmpty()) {
+                    Text(
+                        text = "Stall Photos",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LazyRow {
+                        items(stallImages) { imageUrl ->
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(imageUrl)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "Stall Photo",
+                                modifier = Modifier
+                                    .size(120.dp)
+                                    .padding(end = 8.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color.LightGray.copy(alpha = 0.3f)),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
+
+                // Food List Section
                 Text(
-                    text = "Stall Photos",
+                    text = "Available Foods",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                LazyRow {
-                    items(stallImages) { imageUrl ->
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(imageUrl)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = "Stall Photo",
-                            modifier = Modifier
-                                .size(120.dp)
-                                .padding(end = 8.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(Color.LightGray.copy(alpha = 0.3f)),
-                            contentScale = ContentScale.Crop
-                        )
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(bottom = 16.dp)
+                ) {
+                    items(foods) { record ->
+                        FoodItemCard(record = record, onClick = {})
                     }
-                }
-                Spacer(modifier = Modifier.height(24.dp))
-            }
-
-            // Food List Section
-            Text(
-                text = "Available Foods",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(bottom = 16.dp)
-            ) {
-                items(foods) { record ->
-                    FoodItemCard(record = record, onClick = {})
                 }
             }
         }
@@ -153,12 +166,26 @@ fun StallBottomSheetContent(
 
 @Preview(showBackground = true)
 @Composable
-fun StallBottomSheetPreview() {
+fun StallBottomSheetHalfwayPreview() {
     StallBottomSheetContent(
         stallName = "Sample Stall",
         stallId = "01",
         foods = emptyList(),
         onDismiss = {},
-        stallImages = listOf("https://via.placeholder.com/150")
+        stallImages = listOf("https://via.placeholder.com/150"),
+        sheetStage = SheetStage.Halfway
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun StallBottomSheetMinimizedPreview() {
+    StallBottomSheetContent(
+        stallName = "Sample Stall",
+        stallId = "01",
+        foods = emptyList(),
+        onDismiss = {},
+        stallImages = listOf("https://via.placeholder.com/150"),
+        sheetStage = SheetStage.Minimized
     )
 }

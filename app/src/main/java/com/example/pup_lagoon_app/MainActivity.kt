@@ -176,10 +176,10 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
             val screenHeight = constraints.maxHeight.toFloat()
             
             // Anchors for the 3-stage bottom sheet
-            // Minimized: ~84dp from bottom (Header only)
+            // Minimized: ~60dp from bottom (Header only)
             // Halfway: exactly 50% of screen height from bottom
             // Full: 100dp from top (just shy of search bar)
-            val minimizedOffset = screenHeight - with(density) { 84.dp.toPx() }
+            val minimizedOffset = screenHeight - with(density) { 60.dp.toPx() }
             val halfwayOffset = screenHeight * 0.50f
             val fullOffset = with(density) { 100.dp.toPx() }
 
@@ -462,7 +462,7 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 12.dp),
+                                .padding(vertical = 8.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Box(
@@ -479,7 +479,8 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                             foods = viewModel.stallFoods,
                             onDismiss = { viewModel.clearSelection() },
                             modifier = Modifier.weight(1f),
-                            stallImages = viewModel.selectedStallImages
+                            stallImages = viewModel.selectedStallImages,
+                            sheetStage = anchoredDraggableState.targetValue
                         )
                     }
                 }
