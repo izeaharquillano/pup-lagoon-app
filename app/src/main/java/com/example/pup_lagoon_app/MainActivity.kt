@@ -193,7 +193,7 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
 
             val snapAnimationSpec = spring<Float>(
                 dampingRatio = Spring.DampingRatioNoBouncy,
-                stiffness = Spring.StiffnessMediumLow
+                stiffness = Spring.StiffnessMedium // Increased stiffness for snappier feel
             )
 
             val anchoredDraggableState = remember(anchors) {
@@ -480,7 +480,7 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                             onDismiss = { viewModel.clearSelection() },
                             modifier = Modifier.weight(1f),
                             stallImages = viewModel.selectedStallImages,
-                            sheetStage = anchoredDraggableState.targetValue
+                            sheetStage = anchoredDraggableState.currentValue
                         )
                     }
                 }

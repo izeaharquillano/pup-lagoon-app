@@ -1,8 +1,14 @@
 package com.example.pup_lagoon_app.ui.components
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,10 +32,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -51,7 +60,22 @@ fun StallBottomSheetContent(
     sheetStage: SheetStage = SheetStage.Halfway
 ) {
     val isMinimized = sheetStage == SheetStage.Minimized
-    
+
+    val iconSize by animateDpAsState(
+        targetValue = if (isMinimized) 24.dp else 40.dp,
+        label = "iconSize"
+    )
+
+    val verticalPadding by animateDpAsState(
+        targetValue = if (isMinimized) 4.dp else 8.dp,
+        label = "verticalPadding"
+    )
+
+    val horizontalPadding by animateDpAsState(
+        targetValue = if (isMinimized) 16.dp else 20.dp,
+        label = "horizontalPadding"
+    )
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -62,8 +86,8 @@ fun StallBottomSheetContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(
-                    horizontal = 20.dp, 
-                    vertical = if (isMinimized) 4.dp else 8.dp
+                    horizontal = horizontalPadding,
+                    vertical = verticalPadding
                 ),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -71,19 +95,48 @@ fun StallBottomSheetContent(
                 imageVector = Icons.Default.Storefront,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(if (isMinimized) 24.dp else 40.dp)
+                modifier = Modifier.size(iconSize)
             )
             Spacer(modifier = Modifier.width(if (isMinimized) 8.dp else 12.dp))
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                Text(
-                    text = stallName,
-                    style = if (isMinimized) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black
-                )
-                if (!isMinimized) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    AnimatedContent(
+                        targetState = isMinimized,
+                        transitionSpec = {
+                            fadeIn() togetherWith fadeOut()
+                        },
+                        label = "titleContent"
+                    ) { minimized ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = stallName,
+                                style = if (minimized) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black
+                            )
+                            
+                            if (minimized) {
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "#$stallId",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color.Gray
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Expanded Stall ID (below name)
+                AnimatedVisibility(
+                    visible = !isMinimized,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
                     Text(
                         text = "Stall #$stallId",
                         style = MaterialTheme.typography.bodyMedium,
@@ -91,7 +144,7 @@ fun StallBottomSheetContent(
                     )
                 }
             }
-            
+
             IconButton(
                 onClick = onDismiss,
                 modifier = Modifier.size(if (isMinimized) 32.dp else 48.dp)
@@ -105,12 +158,16 @@ fun StallBottomSheetContent(
             }
         }
 
-        if (!isMinimized) {
+        AnimatedVisibility(
+            visible = !isMinimized,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+            modifier = Modifier.weight(1f)
+        ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
-                    .weight(1f)
             ) {
                 Spacer(modifier = Modifier.height(16.dp))
 
