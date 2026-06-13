@@ -6,30 +6,43 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.geometry.Offset
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.pup_lagoon_app.data.FoodRecord
 import com.example.pup_lagoon_app.data.MergedRecords
 import com.example.pup_lagoon_app.data.FoodRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 
 
+@OptIn(FlowPreview::class)
 class MainViewModel(private val repository: FoodRepository) : ViewModel() {
 
-    var searchQuery by mutableStateOf("")
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
-    var selectedCategories by mutableStateOf(setOf<String>())
-        private set
+    private val _selectedCategories = MutableStateFlow(setOf<String>())
+    val selectedCategories: StateFlow<Set<String>> = _selectedCategories.asStateFlow()
 
-    var minPrice by mutableStateOf("")
-        private set
+    private val _minPrice = MutableStateFlow("")
+    val minPrice: StateFlow<String> = _minPrice.asStateFlow()
 
-    var maxPrice by mutableStateOf("")
-        private set
+    private val _maxPrice = MutableStateFlow("")
+    val maxPrice: StateFlow<String> = _maxPrice.asStateFlow()
 
     var showFilterDialog by mutableStateOf(false)
 
     var showResults by mutableStateOf(true)
         private set
 
-    private var manualSearchActive by mutableStateOf(false)
+    private val _manualSearchActive = MutableStateFlow(false)
 
     var selectedStallLocation by mutableStateOf<Offset?>(null)
         private set
@@ -51,49 +64,53 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
         groupFoodRecords(foods)
     }
 
-    val searchResults: List<MergedRecords> by derivedStateOf {
-        val min = minPrice.toDoubleOrNull() ?: 0.0
-        val max = maxPrice.toDoubleOrNull() ?: Double.MAX_VALUE
+    val searchResults: StateFlow<List<MergedRecords>> = combine(
+        _searchQuery.debounce(300),
+        _selectedCategories,
+        _minPrice,
+        _maxPrice,
+        _manualSearchActive
+    ) { query, categories, minStr, maxStr, manualActive ->
+        val min = minStr.toDoubleOrNull() ?: 0.0
+        val max = maxStr.toDoubleOrNull() ?: Double.MAX_VALUE
 
-        // Logic:
-        // 1. Search if query >= 2 characters.
-        // 2. OR search if manual search was triggered (button/enter).
-        // 3. OR search if filters are active (even with empty query).
-        
-        val isQueryLongEnough = searchQuery.length >= 2
-        val isFilterActive = selectedCategories.isNotEmpty() || minPrice.isNotBlank() || maxPrice.isNotBlank()
-        
-        val shouldSearch = isQueryLongEnough || manualSearchActive || isFilterActive
+        val isQueryLongEnough = query.length >= 2
+        val isFilterActive = categories.isNotEmpty() || minStr.isNotBlank() || maxStr.isNotBlank()
+        val shouldSearch = isQueryLongEnough || manualActive || isFilterActive
 
         if (!shouldSearch) {
-            return@derivedStateOf emptyList<MergedRecords>()
+            emptyList<MergedRecords>()
+        } else {
+            val rawResults = repository.search(
+                nameQuery = query,
+                selectedCategories = categories,
+                minPrice = min,
+                maxPrice = max
+            ).distinctBy { it.foodId }
+
+            groupFoodRecords(rawResults)
         }
-
-        val rawResults = repository.search(
-            nameQuery = searchQuery,
-            selectedCategories = selectedCategories,
-            minPrice = min,
-            maxPrice = max
-        ).distinctBy { it.foodId }
-
-        groupFoodRecords(rawResults)
-    }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
 
     fun onSearchQueryChange(newQuery: String) {
-        searchQuery = newQuery
-        manualSearchActive = false // Reset manual trigger on typing
+        _searchQuery.value = newQuery
+        _manualSearchActive.value = false // Reset manual trigger on typing
         showResults = true
     }
 
     fun performManualSearch() {
-        manualSearchActive = true
+        _manualSearchActive.value = true
         showResults = true
     }
 
     fun onApplyFilters(categories: Set<String>, min: String, max: String) {
-        selectedCategories = categories
-        minPrice = min
-        maxPrice = max
+        _selectedCategories.value = categories
+        _minPrice.value = min
+        _maxPrice.value = max
         showFilterDialog = false
         showResults = true
     }

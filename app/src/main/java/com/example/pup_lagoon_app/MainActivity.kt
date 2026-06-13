@@ -42,6 +42,14 @@ import androidx.compose.material3.SheetValue
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import com.example.pup_lagoon_app.ui.components.StallBottomSheetContent
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -57,15 +65,10 @@ import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.offset
 import androidx.compose.animation.core.tween
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -130,12 +133,18 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
         }
     )
 
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val searchResults by viewModel.searchResults.collectAsState()
+    val selectedCategories by viewModel.selectedCategories.collectAsState()
+    val minPrice by viewModel.minPrice.collectAsState()
+    val maxPrice by viewModel.maxPrice.collectAsState()
+
     if (viewModel.showFilterDialog) {
         FilterDialog(
             categories = viewModel.getAllCategories(),
-            selectedCategories = viewModel.selectedCategories,
-            minPrice = viewModel.minPrice,
-            maxPrice = viewModel.maxPrice,
+            selectedCategories = selectedCategories,
+            minPrice = minPrice,
+            maxPrice = maxPrice,
             onDismiss = { viewModel.toggleFilterDialog() },
             onApply = { categories, min, max ->
                 viewModel.onApplyFilters(categories, min, max)
@@ -265,11 +274,11 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                 val hasActiveFilterOrSearch by remember {
                     derivedStateOf {
                         viewModel.showResults && (
-                            viewModel.searchResults.isNotEmpty() || 
-                            (viewModel.searchQuery.length >= 2) || 
-                            viewModel.selectedCategories.isNotEmpty() ||
-                            viewModel.minPrice.isNotBlank() ||
-                            viewModel.maxPrice.isNotBlank()
+                            searchResults.isNotEmpty() || 
+                            (searchQuery.length >= 2) || 
+                            selectedCategories.isNotEmpty() ||
+                            minPrice.isNotBlank() ||
+                            maxPrice.isNotBlank()
                         )
                     }
                 }
@@ -291,7 +300,7 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             OutlinedTextField(
-                                value = viewModel.searchQuery,
+                                value = searchQuery,
                                 onValueChange = { viewModel.onSearchQueryChange(it) },
                                 placeholder = { 
                                     Text(
@@ -306,7 +315,7 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                                 keyboardActions = KeyboardActions(onSearch = { viewModel.performManualSearch() }),
                                 trailingIcon = {
-                                    if (viewModel.searchQuery.isNotEmpty()) {
+                                    if (searchQuery.isNotEmpty()) {
                                         IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
                                             Icon(
                                                 imageVector = Icons.Default.Clear,
@@ -367,14 +376,14 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                                     .padding(12.dp)
                                     .heightIn(max = 500.dp)
                             ) {
-                                if (viewModel.selectedCategories.isNotEmpty() || viewModel.minPrice.isNotBlank() || viewModel.maxPrice.isNotBlank()) {
+                                if (selectedCategories.isNotEmpty() || minPrice.isNotBlank() || maxPrice.isNotBlank()) {
                                     Surface(
                                         color = MaterialTheme.colorScheme.primaryContainer,
                                         shape = RoundedCornerShape(4.dp)
                                     ) {
                                         Text(
-                                            text = "Filters: ${viewModel.selectedCategories.size} categories" + 
-                                                   (if (viewModel.minPrice.isNotBlank() || viewModel.maxPrice.isNotBlank()) ", price range" else ""),
+                                            text = "Filters: ${selectedCategories.size} categories" + 
+                                                   (if (minPrice.isNotBlank() || maxPrice.isNotBlank()) ", price range" else ""),
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -383,7 +392,7 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                                     Spacer(modifier = Modifier.height(8.dp))
                                 }
 
-                                if (viewModel.searchResults.isEmpty()) {
+                                if (searchResults.isEmpty()) {
                                     Text(
                                         text = "No results found",
                                         style = MaterialTheme.typography.bodyMedium,
@@ -397,7 +406,7 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                                         modifier = Modifier.scrollbar(listState, autoHide = true)
                                     ) {
                                         items(
-                                            items = viewModel.searchResults,
+                                            items = searchResults,
                                             key = { it.id },
                                             contentType = { "food_card" }
                                         ) { record ->
