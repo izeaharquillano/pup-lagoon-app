@@ -14,7 +14,6 @@ import com.example.pup_lagoon_app.data.FoodRepository
 class MainViewModel(private val repository: FoodRepository) : ViewModel() {
 
     var searchQuery by mutableStateOf("")
-        private set
 
     var selectedCategories by mutableStateOf(setOf<String>())
         private set

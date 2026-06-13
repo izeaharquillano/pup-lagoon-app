@@ -7,6 +7,7 @@ import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -43,6 +44,7 @@ fun ZoomableBox(
     initialCenterPixel: Offset? = null,
     targetCenterPixel: Offset? = null,
     contentFullSize: IntSize? = null,
+    onClick: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     var scale by remember { mutableFloatStateOf(initialScale) }
@@ -139,6 +141,11 @@ fun ZoomableBox(
             Box(
                 modifier = Modifier
                     .requiredSize(width = baseWidth.dp, height = baseHeight.dp)
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onTap = { onClick?.invoke() }
+                        )
+                    }
                     .pointerInput(Unit) {
                         detectTransformGestures { centroid, pan, zoom, _ ->
                             isInteracting = true

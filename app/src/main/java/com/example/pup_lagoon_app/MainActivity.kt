@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -54,15 +55,18 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.offset
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -105,11 +109,12 @@ enum class SheetStage { Minimized, Halfway, Full }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen() {
+fun MainScreen(viewModelOverride: MainViewModel? = null) {
     val context = LocalContext.current
     val density = LocalDensity.current
+    val scope = rememberCoroutineScope()
     val repository = remember { FoodRepository(context) }
-    val viewModel: MainViewModel = viewModel(
+    val viewModel: MainViewModel = viewModelOverride ?: viewModel(
         factory = object : androidx.lifecycle.ViewModelProvider.Factory {
             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
                 return MainViewModel(repository) as T
@@ -207,7 +212,14 @@ fun MainScreen() {
                 contentAspectRatio = if (mapSize.width > 0) mapSize.width / mapSize.height else 1f,
                 initialCenterPixel = Offset(1818f, 1281f),
                 targetCenterPixel = viewModel.selectedStallLocation,
-                contentFullSize = IntSize(mapSize.width.toInt(), mapSize.height.toInt())
+                contentFullSize = IntSize(mapSize.width.toInt(), mapSize.height.toInt()),
+                onClick = {
+                    if (anchoredDraggableState.currentValue == SheetStage.Halfway) {
+                        scope.launch {
+                            anchoredDraggableState.animateTo(SheetStage.Minimized)
+                        }
+                    }
+                }
             ) {
                 Image(
                     painter = mapPainter,
@@ -225,82 +237,6 @@ fun MainScreen() {
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Search Bar Area
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            Color.White,
-                            RoundedCornerShape(28.dp)
-                        )
-                        .padding(horizontal = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedTextField(
-                        value = viewModel.searchQuery,
-                        onValueChange = { viewModel.onSearchQueryChange(it) },
-                        placeholder = { 
-                            Text(
-                                "Search by food name",
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            ) 
-                        },
-                        modifier = Modifier
-                            .weight(1f),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                        keyboardActions = KeyboardActions(onSearch = { viewModel.performManualSearch() }),
-                        trailingIcon = {
-                            if (viewModel.searchQuery.isNotEmpty()) {
-                                IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
-                                    Icon(
-                                        imageVector = Icons.Default.Clear,
-                                        contentDescription = "Clear search",
-                                        tint = Maroon
-                                    )
-                                }
-                            }
-                        },
-                        shape = RoundedCornerShape(28.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = Color.Transparent,
-                            unfocusedContainerColor = Color.Transparent,
-                            focusedBorderColor = Color.Transparent,
-                            unfocusedBorderColor = Color.Transparent,
-                        )
-                    )
-                    
-                    IconButton(
-                        onClick = { viewModel.toggleFilterDialog() },
-                        modifier = Modifier.padding(end = 4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.FilterList,
-                            contentDescription = "Filter",
-                            tint = Maroon
-                        )
-                    }
-
-                    IconButton(
-                        onClick = { viewModel.performManualSearch() },
-                        modifier = Modifier
-                            .padding(4.dp)
-                            .background(
-                                Maroon,
-                                RoundedCornerShape(24.dp)
-                            )
-                            .size(40.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = "Search",
-                            tint = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-
                 val hasActiveFilterOrSearch by remember {
                     derivedStateOf {
                         viewModel.showResults && (
@@ -313,57 +249,135 @@ fun MainScreen() {
                     }
                 }
 
-                if (hasActiveFilterOrSearch) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth(0.9f)
-                            .clip(RoundedCornerShape(16.dp)),
-                        color = Color.White,
-                        shape = RoundedCornerShape(16.dp),
-                        tonalElevation = 4.dp
-                    ) {
-                        Column(
+                // Unified Search Panel
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(4.dp, RoundedCornerShape(28.dp)),
+                    color = Color.White,
+                    shape = RoundedCornerShape(28.dp)
+                ) {
+                    Column {
+                        // Search Bar Area
+                        Row(
                             modifier = Modifier
-                                .padding(12.dp)
-                                .heightIn(max = 500.dp)
+                                .fillMaxWidth()
+                                .padding(horizontal = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            if (viewModel.selectedCategories.isNotEmpty() || viewModel.minPrice.isNotBlank() || viewModel.maxPrice.isNotBlank()) {
-                                Surface(
-                                    color = MaterialTheme.colorScheme.primaryContainer,
-                                    shape = RoundedCornerShape(4.dp)
-                                ) {
+                            OutlinedTextField(
+                                value = viewModel.searchQuery,
+                                onValueChange = { viewModel.onSearchQueryChange(it) },
+                                placeholder = { 
                                     Text(
-                                        text = "Filters: ${viewModel.selectedCategories.size} categories" + 
-                                               (if (viewModel.minPrice.isNotBlank() || viewModel.maxPrice.isNotBlank()) ", price range" else ""),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(8.dp))
+                                        "Search by food name",
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    ) 
+                                },
+                                modifier = Modifier
+                                    .weight(1f),
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                keyboardActions = KeyboardActions(onSearch = { viewModel.performManualSearch() }),
+                                trailingIcon = {
+                                    if (viewModel.searchQuery.isNotEmpty()) {
+                                        IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
+                                            Icon(
+                                                imageVector = Icons.Default.Clear,
+                                                contentDescription = "Clear search",
+                                                tint = Maroon
+                                            )
+                                        }
+                                    }
+                                },
+                                shape = RoundedCornerShape(28.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedContainerColor = Color.Transparent,
+                                    unfocusedContainerColor = Color.Transparent,
+                                    focusedBorderColor = Color.Transparent,
+                                    unfocusedBorderColor = Color.Transparent,
+                                )
+                            )
+                            
+                            IconButton(
+                                onClick = { viewModel.toggleFilterDialog() },
+                                modifier = Modifier.padding(end = 4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.FilterList,
+                                    contentDescription = "Filter",
+                                    tint = Maroon
+                                )
                             }
 
-                            if (viewModel.searchResults.isEmpty()) {
-                                Text(
-                                    text = "No results found",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.secondary,
-                                    modifier = Modifier.padding(8.dp)
+                            IconButton(
+                                onClick = { viewModel.performManualSearch() },
+                                modifier = Modifier
+                                    .padding(4.dp)
+                                    .background(
+                                        Maroon,
+                                        RoundedCornerShape(24.dp)
+                                    )
+                                    .size(40.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = "Search",
+                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(20.dp)
                                 )
-                            } else {
-                                val listState = rememberLazyListState()
-                                LazyColumn(
-                                    state = listState,
-                                    modifier = Modifier.scrollbar(listState, autoHide = true)
-                                ) {
-                                    items(
-                                        items = viewModel.searchResults,
-                                        key = { it.id },
-                                        contentType = { "food_card" }
-                                    ) { record ->
-                                        FoodItemCard(record, onClick = { viewModel.selectResult(record) })
+                            }
+                        }
+
+                        if (hasActiveFilterOrSearch) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                                thickness = 1.dp,
+                                color = Color.LightGray
+                            )
+
+                            Column(
+                                modifier = Modifier
+                                    .padding(12.dp)
+                                    .heightIn(max = 500.dp)
+                            ) {
+                                if (viewModel.selectedCategories.isNotEmpty() || viewModel.minPrice.isNotBlank() || viewModel.maxPrice.isNotBlank()) {
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.primaryContainer,
+                                        shape = RoundedCornerShape(4.dp)
+                                    ) {
+                                        Text(
+                                            text = "Filters: ${viewModel.selectedCategories.size} categories" + 
+                                                   (if (viewModel.minPrice.isNotBlank() || viewModel.maxPrice.isNotBlank()) ", price range" else ""),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                }
+
+                                if (viewModel.searchResults.isEmpty()) {
+                                    Text(
+                                        text = "No results found",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.secondary,
+                                        modifier = Modifier.padding(8.dp)
+                                    )
+                                } else {
+                                    val listState = rememberLazyListState()
+                                    LazyColumn(
+                                        state = listState,
+                                        modifier = Modifier.scrollbar(listState, autoHide = true)
+                                    ) {
+                                        items(
+                                            items = viewModel.searchResults,
+                                            key = { it.id },
+                                            contentType = { "food_card" }
+                                        ) { record ->
+                                            FoodItemCard(record, onClick = { viewModel.selectResult(record) })
+                                        }
                                     }
                                 }
                             }
@@ -416,6 +430,22 @@ fun MainScreen() {
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true, name = "Results Visible")
+@Composable
+fun MainScreenResultsPreview() {
+    val context = LocalContext.current
+    val repository = FoodRepository(context)
+    val viewModel = MainViewModel(repository)
+    
+    // Force results to show for preview
+    viewModel.onSearchQueryChange("Burger")
+    viewModel.performManualSearch()
+
+    PuplagoonappTheme {
+        MainScreen(viewModelOverride = viewModel)
     }
 }
 
