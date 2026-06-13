@@ -165,10 +165,10 @@ fun MainScreen() {
             
             // Anchors for the 3-stage bottom sheet
             // Minimized: ~84dp from bottom (Header only)
-            // Halfway: ~340dp from bottom (Header + Photos)
+            // Halfway: exactly 50% of screen height from bottom
             // Full: 100dp from top (just shy of search bar)
             val minimizedOffset = screenHeight - with(density) { 84.dp.toPx() }
-            val halfwayOffset = screenHeight - with(density) { 340.dp.toPx() }
+            val halfwayOffset = screenHeight * 0.50f
             val fullOffset = with(density) { 100.dp.toPx() }
 
             val anchors = remember(screenHeight) {
@@ -228,7 +228,7 @@ fun MainScreen() {
                 // Search Bar Area
                 Row(
                     modifier = Modifier
-                        .fillMaxWidth(0.95f)
+                        .fillMaxWidth()
                         .background(
                             Color.White,
                             RoundedCornerShape(28.dp)
@@ -406,6 +406,7 @@ fun MainScreen() {
 
                         StallBottomSheetContent(
                             stallName = viewModel.selectedStallName ?: "",
+                            stallId = viewModel.selectedStallId ?: "",
                             foods = viewModel.getStallFoods(),
                             onDismiss = { viewModel.clearSelection() },
                             showDetails = anchoredDraggableState.targetValue != SheetStage.Minimized,

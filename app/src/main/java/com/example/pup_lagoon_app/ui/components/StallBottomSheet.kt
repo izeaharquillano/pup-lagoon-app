@@ -42,6 +42,7 @@ import com.example.pup_lagoon_app.data.MergedRecords
 @Composable
 fun StallBottomSheetContent(
     stallName: String,
+    stallId: String,
     foods: List<MergedRecords>,
     onDismiss: () -> Unit,
     showDetails: Boolean,
@@ -67,13 +68,21 @@ fun StallBottomSheetContent(
                 modifier = Modifier.size(40.dp)
             )
             Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = stallName,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black,
+            Column(
                 modifier = Modifier.weight(1f)
-            )
+            ) {
+                Text(
+                    text = stallName,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
+                Text(
+                    text = "Stall #$stallId",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray
+                )
+            }
             IconButton(
                 onClick = onDismiss,
                 modifier = Modifier.size(48.dp)
@@ -150,6 +159,7 @@ fun StallBottomSheetContent(
 fun StallBottomSheetPreview() {
     StallBottomSheetContent(
         stallName = "Sample Stall",
+        stallId = "01",
         foods = emptyList(),
         onDismiss = {},
         showDetails = true,
