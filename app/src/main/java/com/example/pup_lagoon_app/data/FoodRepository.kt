@@ -176,6 +176,10 @@ class FoodRepository(private val context: Context) {
         return priceTree.searchRange(0.0, Double.MAX_VALUE)
     }
 
+    fun getFoodsByStall(stallId: String): List<FoodRecord> {
+        return priceTree.searchRange(0.0, Double.MAX_VALUE).filter { it.stallId == stallId }
+    }
+
     fun getStallLocation(stallId: String): StallLocation? {
         return stallLocations[stallId]
     }

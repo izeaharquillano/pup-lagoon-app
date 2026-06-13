@@ -1,9 +1,12 @@
 package com.example.pup_lagoon_app.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -182,35 +185,41 @@ fun ZoomableBox(
                 content()
 
                 // Pin Overlay - drawn on top of the content but within the same scaling box
-                if (targetCenterPixel != null && contentFullSize != null) {
-                    val fullWidth = contentFullSize.width.toFloat()
-                    val fullHeight = contentFullSize.height.toFloat()
+                AnimatedVisibility(
+                    visible = targetCenterPixel != null && contentFullSize != null,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    if (targetCenterPixel != null && contentFullSize != null) {
+                        val fullWidth = contentFullSize.width.toFloat()
+                        val fullHeight = contentFullSize.height.toFloat()
 
-                    // These are coordinates within the baseWidth/baseHeight box (in pixels)
-                    val pinX = (targetCenterPixel.x / fullWidth) * baseWidth * density
-                    val pinY = (targetCenterPixel.y / fullHeight) * baseHeight * density
+                        // These are coordinates within the baseWidth/baseHeight box (in pixels)
+                        val pinX = (targetCenterPixel.x / fullWidth) * baseWidth * density
+                        val pinY = (targetCenterPixel.y / fullHeight) * baseHeight * density
 
-                    Icon(
-                        imageVector = Icons.Default.LocationOn,
-                        contentDescription = "Stall Pin",
-                        tint = Color.Red,
-                        modifier = Modifier
-                            .size(54.dp)
-                            .graphicsLayer {
-                                // Set the origin of all transformations to the bottom-center tip
-                                transformOrigin = TransformOrigin(0.5f, 1f)
+                        Icon(
+                            imageVector = Icons.Default.LocationOn,
+                            contentDescription = "Stall Pin",
+                            tint = Color.Red,
+                            modifier = Modifier
+                                .size(54.dp)
+                                .graphicsLayer {
+                                    // Set the origin of all transformations to the bottom-center tip
+                                    transformOrigin = TransformOrigin(0.5f, 1f)
 
-                                // INVERSE SCALING:
-                                // This makes the pin stay the same visual size on the screen
-                                scaleX = 1f / currentScale
-                                scaleY = 1f / currentScale
+                                    // INVERSE SCALING:
+                                    // This makes the pin stay the same visual size on the screen
+                                    scaleX = 1f / currentScale
+                                    scaleY = 1f / currentScale
 
-                                // Position the bottom-center tip at (pinX, pinY)
-                                // Since Box is TopStart, (0,0) is top-left.
-                                translationX = pinX - 27.dp.toPx()
-                                translationY = pinY - 54.dp.toPx()
-                            }
-                    )
+                                    // Position the bottom-center tip at (pinX, pinY)
+                                    // Since Box is TopStart, (0,0) is top-left.
+                                    translationX = pinX - 27.dp.toPx()
+                                    translationY = pinY - 54.dp.toPx()
+                                }
+                        )
+                    }
                 }
             }
         }

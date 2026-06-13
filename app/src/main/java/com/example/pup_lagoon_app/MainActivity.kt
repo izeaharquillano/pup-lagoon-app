@@ -37,7 +37,26 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
+import com.example.pup_lagoon_app.ui.components.StallBottomSheetContent
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.rememberSplineBasedDecay
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.AnchoredDraggableState
+import androidx.compose.foundation.gestures.DraggableAnchors
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.anchoredDraggable
+import androidx.compose.foundation.gestures.animateTo
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.offset
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -82,10 +101,13 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+enum class SheetStage { Minimized, Halfway, Full }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
     val context = LocalContext.current
+    val density = LocalDensity.current
     val repository = remember { FoodRepository(context) }
     val viewModel: MainViewModel = viewModel(
         factory = object : androidx.lifecycle.ViewModelProvider.Factory {
@@ -134,11 +156,48 @@ fun MainScreen() {
             )
         }
     ) { innerPadding ->
-        Box(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+            val screenHeight = constraints.maxHeight.toFloat()
+            
+            // Anchors for the 3-stage bottom sheet
+            // Minimized: ~84dp from bottom (Header only)
+            // Halfway: ~340dp from bottom (Header + Photos)
+            // Full: 100dp from top (just shy of search bar)
+            val minimizedOffset = screenHeight - with(density) { 84.dp.toPx() }
+            val halfwayOffset = screenHeight - with(density) { 340.dp.toPx() }
+            val fullOffset = with(density) { 100.dp.toPx() }
+
+            val anchors = remember(screenHeight) {
+                DraggableAnchors {
+                    SheetStage.Minimized at minimizedOffset
+                    SheetStage.Halfway at halfwayOffset
+                    SheetStage.Full at fullOffset
+                }
+            }
+
+            val decayAnimationSpec = rememberSplineBasedDecay<Float>()
+            val anchoredDraggableState = remember(anchors) {
+                AnchoredDraggableState(
+                    initialValue = SheetStage.Minimized,
+                    anchors = anchors,
+                    positionalThreshold = { distance: Float -> distance * 0.5f },
+                    velocityThreshold = { with(density) { 100.dp.toPx() } },
+                    snapAnimationSpec = tween(durationMillis = 300),
+                    decayAnimationSpec = decayAnimationSpec
+                )
+            }
+
+            // Reset to Halfway when a new stall is selected
+            LaunchedEffect(viewModel.selectedStallId) {
+                if (viewModel.selectedStallId != null) {
+                    anchoredDraggableState.animateTo(SheetStage.Halfway)
+                }
+            }
+
             // LAYER 1: Background Map Image
             val mapPainter = painterResource(id = R.drawable.university_map)
             val mapSize = mapPainter.intrinsicSize
@@ -154,12 +213,12 @@ fun MainScreen() {
                     painter = mapPainter,
                     contentDescription = "University Map",
                     modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.FillBounds, // Fill the ZoomableBox's base size
+                    contentScale = ContentScale.FillBounds,
                     alpha = 1.0f
                 )
             }
 
-            // LAYER 2: UI Content
+            // LAYER 2: UI Search Content
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -244,13 +303,9 @@ fun MainScreen() {
 
                 val hasActiveFilterOrSearch by remember {
                     derivedStateOf {
-                        // Logic for when to show the results surface at all:
-                        // 1. Manual search was triggered
-                        // 2. Auto-search is active (>= 2 chars)
-                        // 3. Filters are active
                         viewModel.showResults && (
-                            viewModel.searchResults.isNotEmpty() || // Always show if we have results
-                            (viewModel.searchQuery.length >= 2) || // Show "No results" for auto-search
+                            viewModel.searchResults.isNotEmpty() || 
+                            (viewModel.searchQuery.length >= 2) || 
                             viewModel.selectedCategories.isNotEmpty() ||
                             viewModel.minPrice.isNotBlank() ||
                             viewModel.maxPrice.isNotBlank()
@@ -261,7 +316,6 @@ fun MainScreen() {
                 if (hasActiveFilterOrSearch) {
                     Spacer(modifier = Modifier.height(12.dp))
                     
-                    // Results container
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth(0.9f)
@@ -314,6 +368,48 @@ fun MainScreen() {
                                 }
                             }
                         }
+                    }
+                }
+            }
+
+            // LAYER 3: 3-Stage Bottom Sheet
+            if (viewModel.showBottomSheet) {
+                Surface(
+                    modifier = Modifier
+                        .offset { 
+                            IntOffset(
+                                x = 0, 
+                                y = anchoredDraggableState.requireOffset().roundToInt()
+                            ) 
+                        }
+                        .fillMaxSize()
+                        .anchoredDraggable(anchoredDraggableState, Orientation.Vertical),
+                    shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+                    color = Color.White,
+                    shadowElevation = 16.dp
+                ) {
+                    Column {
+                        // Custom Drag Handle
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(width = 32.dp, height = 4.dp)
+                                    .clip(RoundedCornerShape(2.dp))
+                                    .background(Color.LightGray)
+                            )
+                        }
+
+                        StallBottomSheetContent(
+                            stallName = viewModel.selectedStallName ?: "",
+                            foods = viewModel.getStallFoods(),
+                            onDismiss = { viewModel.clearSelection() },
+                            showDetails = anchoredDraggableState.targetValue != SheetStage.Minimized
+                        )
                     }
                 }
             }

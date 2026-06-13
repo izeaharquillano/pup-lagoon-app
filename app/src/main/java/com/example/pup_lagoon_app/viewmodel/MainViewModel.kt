@@ -35,6 +35,14 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
     var selectedStallLocation by mutableStateOf<Offset?>(null)
         private set
 
+    var selectedStallId by mutableStateOf<String?>(null)
+        private set
+
+    var selectedStallName by mutableStateOf<String?>(null)
+        private set
+
+    var showBottomSheet by mutableStateOf(false)
+
     val searchResults: List<MergedRecords> by derivedStateOf {
         val min = minPrice.toDoubleOrNull() ?: 0.0
         val max = maxPrice.toDoubleOrNull() ?: Double.MAX_VALUE
@@ -89,7 +97,16 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
     fun selectResult(record: MergedRecords) {
         val location = repository.getStallLocation(record.stallId)
         selectedStallLocation = location?.toOffset()
+        selectedStallId = record.stallId
+        selectedStallName = record.stallName
         showResults = false
+        showBottomSheet = true
+    }
+
+    fun getStallFoods(): List<MergedRecords> {
+        val stallId = selectedStallId ?: return emptyList()
+        val foods = repository.getFoodsByStall(stallId)
+        return groupFoodRecords(foods)
     }
 
     fun updateResultsVisibility(show: Boolean) {
@@ -98,6 +115,9 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
 
     fun clearSelection() {
         selectedStallLocation = null
+        selectedStallId = null
+        selectedStallName = null
+        showBottomSheet = false
     }
 
     fun getAllCategories(): List<String> {
