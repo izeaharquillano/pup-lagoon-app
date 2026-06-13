@@ -45,14 +45,13 @@ fun StallBottomSheetContent(
     stallId: String,
     foods: List<MergedRecords>,
     onDismiss: () -> Unit,
-    showDetails: Boolean,
+    modifier: Modifier = Modifier,
     stallImages: List<String> = emptyList()
 ) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .background(Color.White)
-            .padding(bottom = 32.dp)
     ) {
         // Stall Header - Now a Row to align the icon/name and dismiss button
         Row(
@@ -95,59 +94,57 @@ fun StallBottomSheetContent(
             }
         }
 
-        AnimatedVisibility(
-            visible = showDetails,
-            enter = fadeIn(),
-            exit = fadeOut()
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .weight(1f)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-            ) {
-                Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-                // Stall Photos Section
-                if (stallImages.isNotEmpty()) {
-                    Text(
-                        text = "Stall Photos",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    LazyRow {
-                        items(stallImages) { imageUrl ->
-                            AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    .data(imageUrl)
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = "Stall Photo",
-                                modifier = Modifier
-                                    .size(120.dp)
-                                    .padding(end = 8.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(Color.LightGray.copy(alpha = 0.3f)),
-                                contentScale = ContentScale.Crop
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(24.dp))
-                }
-
-                // Food List Section
+            // Stall Photos Section
+            if (stallImages.isNotEmpty()) {
                 Text(
-                    text = "Available Foods",
+                    text = "Stall Photos",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                LazyColumn(
-                    modifier = Modifier.heightIn(max = 400.dp)
-                ) {
-                    items(foods) { record ->
-                        FoodItemCard(record = record, onClick = {})
+                LazyRow {
+                    items(stallImages) { imageUrl ->
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(imageUrl)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "Stall Photo",
+                            modifier = Modifier
+                                .size(120.dp)
+                                .padding(end = 8.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color.LightGray.copy(alpha = 0.3f)),
+                            contentScale = ContentScale.Crop
+                        )
                     }
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+
+            // Food List Section
+            Text(
+                text = "Available Foods",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(bottom = 16.dp)
+            ) {
+                items(foods) { record ->
+                    FoodItemCard(record = record, onClick = {})
                 }
             }
         }
@@ -162,7 +159,6 @@ fun StallBottomSheetPreview() {
         stallId = "01",
         foods = emptyList(),
         onDismiss = {},
-        showDetails = true,
         stallImages = listOf("https://via.placeholder.com/150")
     )
 }

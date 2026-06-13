@@ -43,11 +43,13 @@ import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
 import com.example.pup_lagoon_app.ui.components.StallBottomSheetContent
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.rememberSplineBasedDecay
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.AnchoredDraggableDefaults
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.DraggableAnchors
+import androidx.compose.foundation.gestures.FlingBehavior
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.anchoredDraggable
 import androidx.compose.foundation.gestures.animateTo
@@ -69,6 +71,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
@@ -80,6 +86,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.pup_lagoon_app.data.FoodRepository
@@ -184,15 +191,15 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                 }
             }
 
-            val decayAnimationSpec = rememberSplineBasedDecay<Float>()
+            val snapAnimationSpec = spring<Float>(
+                dampingRatio = Spring.DampingRatioNoBouncy,
+                stiffness = Spring.StiffnessMediumLow
+            )
+
             val anchoredDraggableState = remember(anchors) {
                 AnchoredDraggableState(
                     initialValue = SheetStage.Minimized,
-                    anchors = anchors,
-                    positionalThreshold = { distance: Float -> distance * 0.5f },
-                    velocityThreshold = { with(density) { 100.dp.toPx() } },
-                    snapAnimationSpec = tween(durationMillis = 300),
-                    decayAnimationSpec = decayAnimationSpec
+                    anchors = anchors
                 )
             }
 
@@ -388,16 +395,64 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
 
             // LAYER 3: 3-Stage Bottom Sheet
             if (viewModel.showBottomSheet) {
+                val nestedScrollConnection = remember(anchoredDraggableState) {
+                    object : NestedScrollConnection {
+                        override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                            val delta = available.y
+                            return if (delta < 0 && source == NestedScrollSource.UserInput) {
+                                val consumed = anchoredDraggableState.dispatchRawDelta(delta)
+                                Offset(x = 0f, y = consumed)
+                            } else {
+                                Offset.Zero
+                            }
+                        }
+
+                        override fun onPostScroll(
+                            consumed: Offset,
+                            available: Offset,
+                            source: NestedScrollSource
+                        ): Offset {
+                            val delta = available.y
+                            return if (source == NestedScrollSource.UserInput) {
+                                val dragConsumed = anchoredDraggableState.dispatchRawDelta(delta)
+                                Offset(x = 0f, y = dragConsumed)
+                            } else {
+                                Offset.Zero
+                            }
+                        }
+
+                        override suspend fun onPreFling(available: Velocity): Velocity {
+                            val toFling = available.y
+                            return if (toFling < 0) {
+                                scope.launch {
+                                    anchoredDraggableState.settle(snapAnimationSpec)
+                                }
+                                available
+                            } else {
+                                Velocity.Zero
+                            }
+                        }
+
+                        override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                            scope.launch {
+                                anchoredDraggableState.settle(snapAnimationSpec)
+                            }
+                            return available
+                        }
+                    }
+                }
+
                 Surface(
                     modifier = Modifier
-                        .offset { 
-                            IntOffset(
-                                x = 0, 
-                                y = anchoredDraggableState.requireOffset().roundToInt()
-                            ) 
+                        .graphicsLayer {
+                            translationY = anchoredDraggableState.requireOffset()
                         }
                         .fillMaxSize()
-                        .anchoredDraggable(anchoredDraggableState, Orientation.Vertical),
+                        .anchoredDraggable(
+                            state = anchoredDraggableState,
+                            orientation = Orientation.Vertical
+                        )
+                        .nestedScroll(nestedScrollConnection),
                     shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
                     color = Color.White,
                     shadowElevation = 16.dp
@@ -421,9 +476,9 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                         StallBottomSheetContent(
                             stallName = viewModel.selectedStallName ?: "",
                             stallId = viewModel.selectedStallId ?: "",
-                            foods = viewModel.getStallFoods(),
+                            foods = viewModel.stallFoods,
                             onDismiss = { viewModel.clearSelection() },
-                            showDetails = anchoredDraggableState.targetValue != SheetStage.Minimized,
+                            modifier = Modifier.weight(1f),
                             stallImages = viewModel.selectedStallImages
                         )
                     }
@@ -437,12 +492,20 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
 @Composable
 fun MainScreenResultsPreview() {
     val context = LocalContext.current
-    val repository = FoodRepository(context)
-    val viewModel = MainViewModel(repository)
+    val repository = remember { FoodRepository(context) }
+    val viewModel: MainViewModel = viewModel(
+        factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return MainViewModel(repository) as T
+            }
+        }
+    )
     
     // Force results to show for preview
-    viewModel.onSearchQueryChange("Burger")
-    viewModel.performManualSearch()
+    LaunchedEffect(Unit) {
+        viewModel.onSearchQueryChange("Burger")
+        viewModel.performManualSearch()
+    }
 
     PuplagoonappTheme {
         MainScreen(viewModelOverride = viewModel)
