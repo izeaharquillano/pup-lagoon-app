@@ -1,5 +1,7 @@
 package com.example.pup_lagoon_app.data
 
+import androidx.compose.runtime.Immutable
+
 data class FoodRecord(
     val stallId: String,
     val stallName: String,
@@ -11,6 +13,7 @@ data class FoodRecord(
 )
 
 // this is for the same item, different sizes type results
+@Immutable
 data class MergedRecords(
     val id: String, // Unique identifier for stable list keys
     val stallId: String, // For location lookup
@@ -18,5 +21,7 @@ data class MergedRecords(
     val stallName: String,
     val categories: List<String>,
     val sizePrices: List<String>, // Formatted as "Size - ₱Price"
-    val priceRange: String
+    val priceRange: String,
+    val displayCategories: String = "",
+    val displaySizes: String = ""
 )

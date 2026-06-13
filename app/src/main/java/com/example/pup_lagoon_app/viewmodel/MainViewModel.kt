@@ -163,7 +163,9 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
                             stallName = stall,
                             categories = matchingRecords.first().categories,
                             sizePrices = sizePriceList,
-                            priceRange = priceDisplay
+                            priceRange = priceDisplay,
+                            displayCategories = matchingRecords.first().categories.joinToString(", "),
+                            displaySizes = sizePriceList.joinToString(", ")
                         )
                     }
             }

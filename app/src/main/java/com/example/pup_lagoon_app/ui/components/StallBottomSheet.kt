@@ -10,6 +10,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,6 +24,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -30,6 +32,8 @@ import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -41,13 +45,20 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.pup_lagoon_app.SheetStage
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import com.example.pup_lagoon_app.data.MergedRecords
+import com.example.pup_lagoon_app.ui.utils.scrollbar
 
 @Composable
 fun StallBottomSheetContent(
@@ -57,164 +68,186 @@ fun StallBottomSheetContent(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     stallImages: List<String> = emptyList(),
-    sheetStage: SheetStage = SheetStage.Halfway
+    sheetStage: SheetStage = SheetStage.Halfway,
+    progressProvider: () -> Float = { 0.5f } // 0f = Minimized, 0.5f = Halfway, 1f = Full
 ) {
-    val isMinimized = sheetStage == SheetStage.Minimized
-
-    val iconSize by animateDpAsState(
-        targetValue = if (isMinimized) 24.dp else 40.dp,
-        label = "iconSize"
-    )
-
-    val verticalPadding by animateDpAsState(
-        targetValue = if (isMinimized) 4.dp else 8.dp,
-        label = "verticalPadding"
-    )
-
-    val horizontalPadding by animateDpAsState(
-        targetValue = if (isMinimized) 16.dp else 20.dp,
-        label = "horizontalPadding"
-    )
+    val density = LocalDensity.current
+    val foodListState = rememberLazyListState()
 
     Column(
         modifier = modifier
             .fillMaxWidth()
             .background(Color.White)
     ) {
-        // Stall Header - Now a Row to align the icon/name and dismiss button
+        // Stall Header - Fixed layout slots with fluid graphics layer transitions
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(
-                    horizontal = horizontalPadding,
-                    vertical = verticalPadding
-                ),
+                .height(64.dp) 
+                .padding(horizontal = 20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 imageVector = Icons.Default.Storefront,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(iconSize)
-            )
-            Spacer(modifier = Modifier.width(if (isMinimized) 8.dp else 12.dp))
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    AnimatedContent(
-                        targetState = isMinimized,
-                        transitionSpec = {
-                            fadeIn() togetherWith fadeOut()
-                        },
-                        label = "titleContent"
-                    ) { minimized ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = stallName,
-                                style = if (minimized) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Black
-                            )
-                            
-                            if (minimized) {
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "#$stallId",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.Gray
-                                )
-                            }
-                        }
+                modifier = Modifier
+                    .graphicsLayer {
+                        val p = (progressProvider() / 0.5f).coerceIn(0f, 1f)
+                        val scale = 0.75f + (0.25f * p)
+                        scaleX = scale
+                        scaleY = scale
+                        transformOrigin = TransformOrigin(0f, 0.5f)
                     }
-                }
-
-                // Expanded Stall ID (below name)
-                AnimatedVisibility(
-                    visible = !isMinimized,
-                    enter = fadeIn() + expandVertically(),
-                    exit = fadeOut() + shrinkVertically()
+                    .size(40.dp)
+            )
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .graphicsLayer {
+                        // Push up slightly as we expand to balance visual center with subtitle
+                        val p = progressProvider()
+                        val upwardShift = with(density) { 8.dp.toPx() }
+                        translationY = -upwardShift * p.coerceIn(0f, 1f)
+                    },
+                contentAlignment = Alignment.CenterStart
+            ) {
+                // Name Row - Stays centered with the icon layout box
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.graphicsLayer {
+                        val p = (progressProvider() / 0.5f).coerceIn(0f, 1f)
+                        val scale = 0.85f + (0.15f * p)
+                        scaleX = scale
+                        scaleY = scale
+                        transformOrigin = TransformOrigin(0f, 0.5f)
+                    }
                 ) {
                     Text(
-                        text = "Stall #$stallId",
+                        text = stallName,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.alignByBaseline()
+                    )
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    Text(
+                        text = "#$stallId",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray
+                        color = Color.Gray,
+                        modifier = Modifier
+                            .alignByBaseline()
+                            .graphicsLayer {
+                                val p = progressProvider()
+                                // Fade out the inline ID as we expand
+                                alpha = (1f - (p / 0.2f)).coerceIn(0f, 1f)
+                            }
                     )
                 }
+
+                // Subtitle ID - Sits below the name row, doesn't push it
+                Text(
+                    text = "Stall #$stallId",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray,
+                    modifier = Modifier.graphicsLayer {
+                        val p = progressProvider()
+                        alpha = ((p - 0.2f) / 0.3f).coerceIn(0f, 1f)
+                        // Offset below the center (Title is at center)
+                        translationY = with(density) { 22.dp.toPx() }
+                    }
+                )
             }
 
             IconButton(
                 onClick = onDismiss,
-                modifier = Modifier.size(if (isMinimized) 32.dp else 48.dp)
+                modifier = Modifier.size(48.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Close",
                     tint = Color.Gray,
-                    modifier = Modifier.size(if (isMinimized) 18.dp else 24.dp)
+                    modifier = Modifier.graphicsLayer {
+                        val p = (progressProvider() / 0.5f).coerceIn(0f, 1f)
+                        val scale = 0.8f + (0.2f * p)
+                        scaleX = scale
+                        scaleY = scale
+                    }
                 )
             }
         }
 
-        AnimatedVisibility(
-            visible = !isMinimized,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically(),
-            modifier = Modifier.weight(1f)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-            ) {
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Stall Photos Section
-                if (stallImages.isNotEmpty()) {
-                    Text(
-                        text = "Stall Photos",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    LazyRow {
-                        items(stallImages) { imageUrl ->
-                            AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    .data(imageUrl)
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = "Stall Photo",
-                                modifier = Modifier
-                                    .size(120.dp)
-                                    .padding(end = 8.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(Color.LightGray.copy(alpha = 0.3f)),
-                                contentScale = ContentScale.Crop
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(24.dp))
+        // Main Content - Perfectly fluid alpha and translation
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .weight(1f)
+                .graphicsLayer { 
+                    val p = progressProvider()
+                    alpha = ((p - 0.15f) / 0.35f).coerceIn(0f, 1f)
+                    translationY = 30f * (1f - alpha)
                 }
+        ) {
+            // Static content structure to prevent layout thrashing
+            Spacer(modifier = Modifier.height(16.dp))
 
-                // Food List Section
+            // Stall Photos Section
+            if (stallImages.isNotEmpty()) {
                 Text(
-                    text = "Available Foods",
+                    text = "Stall Photos",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .padding(bottom = 16.dp)
-                ) {
-                    items(foods) { record ->
-                        FoodItemCard(record = record, onClick = {})
+                LazyRow {
+                    items(stallImages) { imageUrl ->
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                    .data(imageUrl)
+                                    .crossfade(true)
+                                    .build(),
+                            contentDescription = "Stall Photo",
+                            modifier = Modifier
+                                    .size(120.dp)
+                                    .padding(end = 8.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color.LightGray.copy(alpha = 0.3f)),
+                            contentScale = ContentScale.Crop
+                        )
                     }
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+
+            // Food List Section
+            Text(
+                text = "Available Foods",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            LazyColumn(
+                state = foodListState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(bottom = 16.dp)
+                    .scrollbar(foodListState, autoHide = true)
+            ) {
+                items(
+                    items = foods,
+                    key = { it.id },
+                    contentType = { "food_item" }
+                ) { record ->
+                    FoodItemCard(record = record, onClick = {})
                 }
             }
         }
@@ -230,7 +263,8 @@ fun StallBottomSheetHalfwayPreview() {
         foods = emptyList(),
         onDismiss = {},
         stallImages = listOf("https://via.placeholder.com/150"),
-        sheetStage = SheetStage.Halfway
+        sheetStage = SheetStage.Halfway,
+        progressProvider = { 0.5f }
     )
 }
 
@@ -243,6 +277,7 @@ fun StallBottomSheetMinimizedPreview() {
         foods = emptyList(),
         onDismiss = {},
         stallImages = listOf("https://via.placeholder.com/150"),
-        sheetStage = SheetStage.Minimized
+        sheetStage = SheetStage.Minimized,
+        progressProvider = { 0f }
     )
 }

@@ -62,20 +62,20 @@ fun FoodItemCard(record: MergedRecords, onClick: () -> Unit) {
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Categories: ${record.categories.joinToString(", ")}",
+                text = "Categories: ${record.displayCategories}",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.secondary
             )
 
             // this is for displaying sizes
-            if (record.sizePrices.isNotEmpty()) {
+            if (record.displaySizes.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceVariant,
                     shape = RoundedCornerShape(4.dp)
                 ) {
                     Text(
-                        text = "Sizes: ${record.sizePrices.joinToString(", ")}",
+                        text = "Sizes: ${record.displaySizes}",
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,

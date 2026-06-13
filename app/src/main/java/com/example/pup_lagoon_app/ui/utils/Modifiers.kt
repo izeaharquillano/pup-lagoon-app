@@ -4,7 +4,9 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
@@ -20,9 +22,10 @@ fun Modifier.scrollbar(
     color: Color = Color.Gray.copy(alpha = 0.5f),
     autoHide: Boolean = true
 ): Modifier {
+    val isScrollInProgress by remember { derivedStateOf { state.isScrollInProgress } }
     val alpha by animateFloatAsState(
-        targetValue = if (!autoHide || state.isScrollInProgress) 1f else 0f,
-        animationSpec = tween(durationMillis = if (state.isScrollInProgress) 0 else 500),
+        targetValue = if (!autoHide || isScrollInProgress) 1f else 0f,
+        animationSpec = tween(durationMillis = if (isScrollInProgress) 0 else 500),
         label = "scrollbar_alpha"
     )
 

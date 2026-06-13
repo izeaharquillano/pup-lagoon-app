@@ -48,6 +48,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.AnchoredDraggableDefaults
 import androidx.compose.foundation.gestures.AnchoredDraggableState
+import androidx.compose.animation.core.exponentialDecay
 import androidx.compose.foundation.gestures.DraggableAnchors
 import androidx.compose.foundation.gestures.FlingBehavior
 import androidx.compose.foundation.gestures.Orientation
@@ -176,10 +177,10 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
             val screenHeight = constraints.maxHeight.toFloat()
             
             // Anchors for the 3-stage bottom sheet
-            // Minimized: ~60dp from bottom (Header only)
+            // Minimized: ~80dp from bottom (Handle + Header)
             // Halfway: exactly 50% of screen height from bottom
             // Full: 100dp from top (just shy of search bar)
-            val minimizedOffset = screenHeight - with(density) { 60.dp.toPx() }
+            val minimizedOffset = screenHeight - with(density) { 80.dp.toPx() }
             val halfwayOffset = screenHeight * 0.50f
             val fullOffset = with(density) { 100.dp.toPx() }
 
@@ -193,7 +194,7 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
 
             val snapAnimationSpec = spring<Float>(
                 dampingRatio = Spring.DampingRatioNoBouncy,
-                stiffness = Spring.StiffnessMedium // Increased stiffness for snappier feel
+                stiffness = 3000f // Balanced stiffness for snappy yet smooth feel
             )
 
             val anchoredDraggableState = remember(anchors) {
@@ -201,6 +202,23 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                     initialValue = SheetStage.Minimized,
                     anchors = anchors
                 )
+            }
+
+            val flingBehavior = AnchoredDraggableDefaults.flingBehavior(
+                state = anchoredDraggableState,
+                positionalThreshold = { distance: Float -> distance * 0.4f },
+                animationSpec = snapAnimationSpec
+            )
+
+            // Lambda provider for progress to avoid recomposition
+            val sheetProgressProvider = remember(anchoredDraggableState, minimizedOffset, fullOffset) {
+                {
+                    val offset = try { anchoredDraggableState.requireOffset() } catch (e: Exception) { minimizedOffset }
+                    val totalRange = minimizedOffset - fullOffset
+                    if (totalRange > 0) {
+                        ((minimizedOffset - offset) / totalRange).coerceIn(0f, 1f)
+                    } else 0f
+                }
             }
 
             // Reset to Halfway when a new stall is selected
@@ -395,11 +413,13 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
 
             // LAYER 3: 3-Stage Bottom Sheet
             if (viewModel.showBottomSheet) {
-                val nestedScrollConnection = remember(anchoredDraggableState) {
+                val nestedScrollConnection = remember(anchoredDraggableState, fullOffset) {
                     object : NestedScrollConnection {
                         override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                             val delta = available.y
-                            return if (delta < 0 && source == NestedScrollSource.UserInput) {
+                            // Swiping UP (delta < 0) - Only consume if the sheet can move up
+                            return if (delta < 0 && source == NestedScrollSource.UserInput && 
+                                anchoredDraggableState.requireOffset() > fullOffset) {
                                 val consumed = anchoredDraggableState.dispatchRawDelta(delta)
                                 Offset(x = 0f, y = consumed)
                             } else {
@@ -413,7 +433,8 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                             source: NestedScrollSource
                         ): Offset {
                             val delta = available.y
-                            return if (source == NestedScrollSource.UserInput) {
+                            // Swiping DOWN (delta > 0)
+                            return if (delta > 0 && source == NestedScrollSource.UserInput) {
                                 val dragConsumed = anchoredDraggableState.dispatchRawDelta(delta)
                                 Offset(x = 0f, y = dragConsumed)
                             } else {
@@ -423,9 +444,15 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
 
                         override suspend fun onPreFling(available: Velocity): Velocity {
                             val toFling = available.y
-                            return if (toFling < 0) {
-                                scope.launch {
-                                    anchoredDraggableState.settle(snapAnimationSpec)
+                            // Swiping UP (toFling < 0) - Only consume if the sheet can move up
+                            return if (toFling < 0 && anchoredDraggableState.requireOffset() > fullOffset) {
+                                val scrollScope = object : androidx.compose.foundation.gestures.ScrollScope {
+                                    override fun scrollBy(pixels: Float): Float {
+                                        return anchoredDraggableState.dispatchRawDelta(pixels)
+                                    }
+                                }
+                                with(flingBehavior) {
+                                    scrollScope.performFling(toFling)
                                 }
                                 available
                             } else {
@@ -434,10 +461,20 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                         }
 
                         override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                            scope.launch {
-                                anchoredDraggableState.settle(snapAnimationSpec)
+                            val toFling = available.y
+                            // Swiping DOWN (toFling > 0) - Always handle what's left to move sheet down
+                            if (toFling > 0) {
+                                val scrollScope = object : androidx.compose.foundation.gestures.ScrollScope {
+                                    override fun scrollBy(pixels: Float): Float {
+                                        return anchoredDraggableState.dispatchRawDelta(pixels)
+                                    }
+                                }
+                                with(flingBehavior) {
+                                    scrollScope.performFling(toFling)
+                                }
+                                return available
                             }
-                            return available
+                            return Velocity.Zero
                         }
                     }
                 }
@@ -450,7 +487,8 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                         .fillMaxSize()
                         .anchoredDraggable(
                             state = anchoredDraggableState,
-                            orientation = Orientation.Vertical
+                            orientation = Orientation.Vertical,
+                            flingBehavior = flingBehavior
                         )
                         .nestedScroll(nestedScrollConnection),
                     shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
@@ -480,7 +518,7 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                             onDismiss = { viewModel.clearSelection() },
                             modifier = Modifier.weight(1f),
                             stallImages = viewModel.selectedStallImages,
-                            sheetStage = anchoredDraggableState.currentValue
+                            progressProvider = sheetProgressProvider
                         )
                     }
                 }
