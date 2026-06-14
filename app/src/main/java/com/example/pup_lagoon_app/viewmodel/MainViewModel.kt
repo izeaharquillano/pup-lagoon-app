@@ -10,8 +10,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.pup_lagoon_app.data.FoodRecord
 import com.example.pup_lagoon_app.data.MergedRecords
 import com.example.pup_lagoon_app.data.FoodRepository
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -21,6 +21,14 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
+
+private data class SearchParameters(
+    val query: String,
+    val categories: Set<String>,
+    val minStr: String,
+    val maxStr: String,
+    val manualActive: Boolean
+)
 
 @OptIn(FlowPreview::class)
 class MainViewModel(private val repository: FoodRepository) : ViewModel() {
@@ -36,6 +44,9 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
 
     private val _maxPrice = MutableStateFlow("")
     val maxPrice: StateFlow<String> = _maxPrice.asStateFlow()
+
+    private val _isSearching = MutableStateFlow(false)
+    val isSearching: StateFlow<Boolean> = _isSearching.asStateFlow()
 
     var showFilterDialog by mutableStateOf(false)
 
@@ -65,31 +76,47 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
     }
 
     val searchResults: StateFlow<List<MergedRecords>> = combine(
-        _searchQuery.debounce(300),
+        _searchQuery,
         _selectedCategories,
         _minPrice,
         _maxPrice,
         _manualSearchActive
     ) { query, categories, minStr, maxStr, manualActive ->
-        val min = minStr.toDoubleOrNull() ?: 0.0
-        val max = maxStr.toDoubleOrNull() ?: Double.MAX_VALUE
+        SearchParameters(query, categories, minStr, maxStr, manualActive)
+    }.map { params ->
+        val isQueryLongEnough = params.query.length >= 2
+        val isFilterActive = params.categories.isNotEmpty() || params.minStr.isNotBlank() || params.maxStr.isNotBlank()
+        val shouldSearch = isQueryLongEnough || params.manualActive || isFilterActive
+        
+        if (shouldSearch) {
+            _isSearching.value = true
+        }
+        params
+    }.debounce { params ->
+        // Immediate clear when query is empty, otherwise debounce
+        if (params.query.isEmpty() || params.manualActive) 0L else 200L
+    }.map { params ->
+        val min = params.minStr.toDoubleOrNull() ?: 0.0
+        val max = params.maxStr.toDoubleOrNull() ?: Double.MAX_VALUE
 
-        val isQueryLongEnough = query.length >= 2
-        val isFilterActive = categories.isNotEmpty() || minStr.isNotBlank() || maxStr.isNotBlank()
-        val shouldSearch = isQueryLongEnough || manualActive || isFilterActive
+        val isQueryLongEnough = params.query.length >= 2
+        val isFilterActive = params.categories.isNotEmpty() || params.minStr.isNotBlank() || params.maxStr.isNotBlank()
+        val shouldSearch = isQueryLongEnough || params.manualActive || isFilterActive
 
-        if (!shouldSearch) {
+        val results = if (!shouldSearch) {
             emptyList<MergedRecords>()
         } else {
             val rawResults = repository.search(
-                nameQuery = query,
-                selectedCategories = categories,
+                nameQuery = params.query,
+                selectedCategories = params.categories,
                 minPrice = min,
                 maxPrice = max
             ).distinctBy { it.foodId }
 
             groupFoodRecords(rawResults)
         }
+        _isSearching.value = false
+        results
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -99,7 +126,19 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
     fun onSearchQueryChange(newQuery: String) {
         _searchQuery.value = newQuery
         _manualSearchActive.value = false // Reset manual trigger on typing
-        showResults = true
+        
+        if (newQuery.isNotEmpty()) {
+            showResults = true
+        } else {
+            // If clearing the search query, and no filters are active, 
+            // we should hide the results panel immediately to avoid flicker.
+            val hasActiveFilters = _selectedCategories.value.isNotEmpty() || 
+                                   _minPrice.value.isNotBlank() || 
+                                   _maxPrice.value.isNotBlank()
+            if (!hasActiveFilters) {
+                showResults = false
+            }
+        }
     }
 
     fun performManualSearch() {

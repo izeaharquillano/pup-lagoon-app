@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -135,6 +136,7 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
 
     val searchQuery by viewModel.searchQuery.collectAsState()
     val searchResults by viewModel.searchResults.collectAsState()
+    val isSearching by viewModel.isSearching.collectAsState()
     val selectedCategories by viewModel.selectedCategories.collectAsState()
     val minPrice by viewModel.minPrice.collectAsState()
     val maxPrice by viewModel.maxPrice.collectAsState()
@@ -187,10 +189,9 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
             
             // Anchors for the 3-stage bottom sheet
             // Minimized: ~80dp from bottom (Handle + Header)
-            // Halfway: exactly 50% of screen height from bottom
-            // Full: 100dp from top (just shy of search bar)
+            // Halfway: 53% of screen height from top (47% from bottom)
             val minimizedOffset = screenHeight - with(density) { 80.dp.toPx() }
-            val halfwayOffset = screenHeight * 0.50f
+            val halfwayOffset = screenHeight * 0.53f
             val fullOffset = with(density) { 100.dp.toPx() }
 
             val anchors = remember(screenHeight) {
@@ -393,12 +394,28 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                                 }
 
                                 if (searchResults.isEmpty()) {
-                                    Text(
-                                        text = "No results found",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.secondary,
-                                        modifier = Modifier.padding(8.dp)
-                                    )
+                                    if (!isSearching) {
+                                        Text(
+                                            text = "No results found",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.secondary,
+                                            modifier = Modifier.padding(8.dp)
+                                        )
+                                    } else {
+                                        // Optional: Show a small loading indicator or just empty space
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(16.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(24.dp),
+                                                strokeWidth = 2.dp,
+                                                color = Maroon
+                                            )
+                                        }
+                                    }
                                 } else {
                                     val listState = rememberLazyListState()
                                     LazyColumn(
