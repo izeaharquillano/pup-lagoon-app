@@ -248,8 +248,15 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                 initialCenterPixel = Offset(1818f, 1281f),
                 targetCenterPixel = viewModel.selectedStallLocation,
                 contentFullSize = IntSize(mapSize.width.toInt(), mapSize.height.toInt()),
+                onInteraction = {
+                    if (anchoredDraggableState.currentValue != SheetStage.Minimized) {
+                        scope.launch {
+                            anchoredDraggableState.animateTo(SheetStage.Minimized)
+                        }
+                    }
+                },
                 onClick = {
-                    if (anchoredDraggableState.currentValue == SheetStage.Halfway) {
+                    if (anchoredDraggableState.currentValue != SheetStage.Minimized) {
                         scope.launch {
                             anchoredDraggableState.animateTo(SheetStage.Minimized)
                         }

@@ -45,6 +45,7 @@ fun ZoomableBox(
     targetCenterPixel: Offset? = null,
     contentFullSize: IntSize? = null,
     onClick: (() -> Unit)? = null,
+    onInteraction: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     var scale by remember { mutableFloatStateOf(initialScale) }
@@ -149,6 +150,7 @@ fun ZoomableBox(
                     .pointerInput(Unit) {
                         detectTransformGestures { centroid, pan, zoom, _ ->
                             isInteracting = true
+                            onInteraction?.invoke()
 
                             val oldScale = scale
                             val newScale = (scale * zoom).coerceIn(minScale, maxScale)
