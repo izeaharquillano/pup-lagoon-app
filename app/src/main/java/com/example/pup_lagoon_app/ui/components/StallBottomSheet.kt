@@ -73,6 +73,8 @@ fun StallBottomSheetContent(
 ) {
     val density = LocalDensity.current
     val foodListState = rememberLazyListState()
+    val progress = progressProvider()
+    val normalizedProgress = (progress / 0.5f).coerceIn(0f, 1f)
 
     Column(
         modifier = modifier
@@ -83,13 +85,10 @@ fun StallBottomSheetContent(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp) 
+                .height((48 + (16 * normalizedProgress)).dp)
                 .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val progress = progressProvider()
-            val normalizedProgress = (progress / 0.5f).coerceIn(0f, 1f)
-
             Icon(
                 imageVector = Icons.Default.Storefront,
                 contentDescription = null,
@@ -118,8 +117,8 @@ fun StallBottomSheetContent(
                     .weight(1f)
                     .graphicsLayer {
                         // Push up slightly as we expand to balance visual center with subtitle
-                        val upwardShift = with(density) { 6.dp.toPx() }
-                        translationY = -upwardShift * progress.coerceIn(0f, 1f)
+                        val upwardShift = with(density) { 10.dp.toPx() }
+                        translationY = -upwardShift * normalizedProgress
                         
                         // Shift left to fill the space of the hidden icon when minimized
                         val shiftLeft = with(density) { 52.dp.toPx() } // 40dp (icon) + 12dp (spacer)
@@ -173,7 +172,7 @@ fun StallBottomSheetContent(
                         val p = progressProvider()
                         alpha = ((p - 0.2f) / 0.3f).coerceIn(0f, 1f)
                         // Offset below the center (Title is at center)
-                        translationY = with(density) { 18.dp.toPx() }
+                        translationY = with(density) { 24.dp.toPx() }
                     }
                 )
             }
