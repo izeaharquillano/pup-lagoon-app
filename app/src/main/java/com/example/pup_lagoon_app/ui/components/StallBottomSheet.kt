@@ -83,7 +83,7 @@ fun StallBottomSheetContent(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(64.dp) 
+                .height(48.dp) 
                 .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -118,7 +118,7 @@ fun StallBottomSheetContent(
                     .weight(1f)
                     .graphicsLayer {
                         // Push up slightly as we expand to balance visual center with subtitle
-                        val upwardShift = with(density) { 8.dp.toPx() }
+                        val upwardShift = with(density) { 6.dp.toPx() }
                         translationY = -upwardShift * progress.coerceIn(0f, 1f)
                         
                         // Shift left to fill the space of the hidden icon when minimized
@@ -173,7 +173,7 @@ fun StallBottomSheetContent(
                         val p = progressProvider()
                         alpha = ((p - 0.2f) / 0.3f).coerceIn(0f, 1f)
                         // Offset below the center (Title is at center)
-                        translationY = with(density) { 22.dp.toPx() }
+                        translationY = with(density) { 18.dp.toPx() }
                     }
                 )
             }

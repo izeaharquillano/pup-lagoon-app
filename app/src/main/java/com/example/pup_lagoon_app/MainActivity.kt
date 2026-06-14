@@ -190,7 +190,7 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
             // Anchors for the 3-stage bottom sheet
             // Minimized: ~80dp from bottom (Handle + Header)
             // Halfway: 53% of screen height from top (47% from bottom)
-            val minimizedOffset = screenHeight - with(density) { 80.dp.toPx() }
+            val minimizedOffset = screenHeight - with(density) { 60.dp.toPx() }
             val halfwayOffset = screenHeight * 0.53f
             val fullOffset = with(density) { 100.dp.toPx() }
 
@@ -533,7 +533,7 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 8.dp),
+                                .padding(vertical = 4.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Box(
