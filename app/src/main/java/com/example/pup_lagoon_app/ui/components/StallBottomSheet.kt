@@ -84,34 +84,46 @@ fun StallBottomSheetContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(64.dp) 
-                .padding(horizontal = 20.dp),
+                .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val progress = progressProvider()
+            val normalizedProgress = (progress / 0.5f).coerceIn(0f, 1f)
+
             Icon(
                 imageVector = Icons.Default.Storefront,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
                     .graphicsLayer {
-                        val p = (progressProvider() / 0.5f).coerceIn(0f, 1f)
-                        val scale = 0.75f + (0.25f * p)
-                        scaleX = scale
-                        scaleY = scale
+                        alpha = normalizedProgress
+                        val scale = 0.75f + (0.25f * normalizedProgress)
+                        scaleX = scale * normalizedProgress
+                        scaleY = scale * normalizedProgress
                         transformOrigin = TransformOrigin(0f, 0.5f)
                     }
                     .size(40.dp)
             )
             
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(
+                modifier = Modifier
+                    .width(12.dp)
+                    .graphicsLayer {
+                        alpha = normalizedProgress
+                    }
+            )
             
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .graphicsLayer {
                         // Push up slightly as we expand to balance visual center with subtitle
-                        val p = progressProvider()
                         val upwardShift = with(density) { 8.dp.toPx() }
-                        translationY = -upwardShift * p.coerceIn(0f, 1f)
+                        translationY = -upwardShift * progress.coerceIn(0f, 1f)
+                        
+                        // Shift left to fill the space of the hidden icon when minimized
+                        val shiftLeft = with(density) { 52.dp.toPx() } // 40dp (icon) + 12dp (spacer)
+                        translationX = -shiftLeft * (1f - normalizedProgress)
                     },
                 contentAlignment = Alignment.CenterStart
             ) {
@@ -140,7 +152,7 @@ fun StallBottomSheetContent(
                     
                     Text(
                         text = "#$stallId",
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.titleMedium,
                         color = Color.Gray,
                         modifier = Modifier
                             .alignByBaseline()
