@@ -44,6 +44,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -71,10 +73,7 @@ fun StallBottomSheetContent(
     sheetStage: SheetStage = SheetStage.Halfway,
     progressProvider: () -> Float = { 0.5f } // 0f = Minimized, 0.5f = Halfway, 1f = Full
 ) {
-    val density = LocalDensity.current
     val foodListState = rememberLazyListState()
-    val progress = progressProvider()
-    val normalizedProgress = (progress / 0.5f).coerceIn(0f, 1f)
 
     Column(
         modifier = modifier
@@ -85,7 +84,17 @@ fun StallBottomSheetContent(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height((48 + (16 * normalizedProgress)).dp)
+                .layout { measurable, constraints ->
+                    val p = progressProvider()
+                    val normP = (p / 0.5f).coerceIn(0f, 1f)
+                    val height = lerp(48.dp, 64.dp, normP).roundToPx()
+                    val placeable = measurable.measure(
+                        constraints.copy(minHeight = height, maxHeight = height)
+                    )
+                    layout(placeable.width, placeable.height) {
+                        placeable.placeRelative(0, 0)
+                    }
+                }
                 .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -95,10 +104,12 @@ fun StallBottomSheetContent(
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
                     .graphicsLayer {
-                        alpha = normalizedProgress
-                        val scale = 0.75f + (0.25f * normalizedProgress)
-                        scaleX = scale * normalizedProgress
-                        scaleY = scale * normalizedProgress
+                        val p = progressProvider()
+                        val normP = (p / 0.5f).coerceIn(0f, 1f)
+                        alpha = normP
+                        val scale = 0.75f + (0.25f * normP)
+                        scaleX = scale * normP
+                        scaleY = scale * normP
                         transformOrigin = TransformOrigin(0f, 0.5f)
                     }
                     .size(40.dp)
@@ -108,7 +119,9 @@ fun StallBottomSheetContent(
                 modifier = Modifier
                     .width(12.dp)
                     .graphicsLayer {
-                        alpha = normalizedProgress
+                        val p = progressProvider()
+                        val normP = (p / 0.5f).coerceIn(0f, 1f)
+                        alpha = normP
                     }
             )
             
@@ -116,13 +129,15 @@ fun StallBottomSheetContent(
                 modifier = Modifier
                     .weight(1f)
                     .graphicsLayer {
+                        val p = progressProvider()
+                        val normP = (p / 0.5f).coerceIn(0f, 1f)
                         // Push up slightly as we expand to balance visual center with subtitle
-                        val upwardShift = with(density) { 10.dp.toPx() }
-                        translationY = -upwardShift * normalizedProgress
+                        val upwardShift = 10.dp.toPx()
+                        translationY = -upwardShift * normP
                         
                         // Shift left to fill the space of the hidden icon when minimized
-                        val shiftLeft = with(density) { 52.dp.toPx() } // 40dp (icon) + 12dp (spacer)
-                        translationX = -shiftLeft * (1f - normalizedProgress)
+                        val shiftLeft = 52.dp.toPx() // 40dp (icon) + 12dp (spacer)
+                        translationX = -shiftLeft * (1f - normP)
                     },
                 contentAlignment = Alignment.CenterStart
             ) {
@@ -172,7 +187,7 @@ fun StallBottomSheetContent(
                         val p = progressProvider()
                         alpha = ((p - 0.2f) / 0.3f).coerceIn(0f, 1f)
                         // Offset below the center (Title is at center)
-                        translationY = with(density) { 24.dp.toPx() }
+                        translationY = 24.dp.toPx()
                     }
                 )
             }
