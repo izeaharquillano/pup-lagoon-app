@@ -221,6 +221,7 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
             ZoomableBox(
                 modifier = Modifier.fillMaxSize(),
                 contentAspectRatio = if (mapSize.width > 0) mapSize.width / mapSize.height else 1f,
+                initialScale = 1.7f,
                 initialCenterPixel = Offset(1818f, 1281f),
                 targetCenterPixel = viewModel.selectedStallLocation,
                 selectedStallIds = viewModel.selectedStallIds,
