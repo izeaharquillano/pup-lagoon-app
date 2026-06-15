@@ -1,12 +1,9 @@
 package com.example.pup_lagoon_app.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
@@ -43,7 +40,11 @@ fun ZoomableBox(
     initialScale: Float = 2.0f,
     initialCenterPixel: Offset? = null,
     targetCenterPixel: Offset? = null,
+    selectedStallIds: Set<String> = emptySet(),
+    selectedStallLocations: Map<String, Offset> = emptyMap(),
     contentFullSize: IntSize? = null,
+    keptPins: Map<String, Offset> = emptyMap(),
+    onPinClick: ((String) -> Unit)? = null,
     onClick: (() -> Unit)? = null,
     onInteraction: (() -> Unit)? = null,
     content: @Composable () -> Unit,
@@ -128,7 +129,6 @@ fun ZoomableBox(
                 }
             }
 
-            // Handle target jumps (clicks) - only when target changes
             LaunchedEffect(targetCenterPixel, contentFullSize) {
                 if (targetCenterPixel != null && contentFullSize != null) {
                     // Force interaction to false so we use animated values for the jump
@@ -193,23 +193,52 @@ fun ZoomableBox(
             ) {
                 content()
 
-                // Pin Overlay - drawn on top of the content but within the same scaling box
-                AnimatedVisibility(
-                    visible = targetCenterPixel != null && contentFullSize != null,
-                    enter = fadeIn(),
-                    exit = fadeOut()
-                ) {
-                    if (targetCenterPixel != null && contentFullSize != null) {
-                        val fullWidth = contentFullSize.width.toFloat()
-                        val fullHeight = contentFullSize.height.toFloat()
+                // Render all kept pins
+                if (contentFullSize != null) {
+                    val fullWidth = contentFullSize.width.toFloat()
+                    val fullHeight = contentFullSize.height.toFloat()
 
-                        // These are coordinates within the baseWidth/baseHeight box (in pixels)
-                        val pinX = (targetCenterPixel.x / fullWidth) * baseWidth * density
-                        val pinY = (targetCenterPixel.y / fullHeight) * baseHeight * density
+                    keptPins.forEach { (id, location) ->
+                        // Skip if it's one of the currently selected stalls
+                        if (id !in selectedStallIds) {
+                            val pinX = (location.x / fullWidth) * baseWidth * density
+                            val pinY = (location.y / fullHeight) * baseHeight * density
+
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = "Kept Pin",
+                                tint = Color(0xFFB71C1C),
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .graphicsLayer {
+                                        transformOrigin = TransformOrigin(0.5f, 1f)
+                                        scaleX = 1f / currentScale
+                                        scaleY = 1f / currentScale
+                                        translationX = pinX - 22.dp.toPx()
+                                        translationY = pinY - 44.dp.toPx()
+                                    }
+                                    .pointerInput(id) {
+                                        detectTapGestures {
+                                            onPinClick?.invoke(id)
+                                        }
+                                    }
+                            )
+                        }
+                    }
+                }
+
+                // Selected Pins Overlay
+                if (contentFullSize != null) {
+                    val fullWidth = contentFullSize.width.toFloat()
+                    val fullHeight = contentFullSize.height.toFloat()
+
+                    selectedStallLocations.forEach { (id, location) ->
+                        val pinX = (location.x / fullWidth) * baseWidth * density
+                        val pinY = (location.y / fullHeight) * baseHeight * density
 
                         Icon(
                             imageVector = Icons.Default.LocationOn,
-                            contentDescription = "Stall Pin",
+                            contentDescription = "Selected Stall Pin",
                             tint = Color.Red,
                             modifier = Modifier
                                 .size(54.dp)

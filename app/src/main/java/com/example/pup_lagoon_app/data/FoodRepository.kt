@@ -120,7 +120,10 @@ class FoodRepository(private val context: Context) {
         val queryLower = nameQuery.lowercase()
         val predicate: (FoodRecord) -> Boolean = { record ->
             val matchesName = if (queryLower.isNotBlank()) {
-                record.name.contains(queryLower, ignoreCase = true)
+                record.name.contains(queryLower, ignoreCase = true) ||
+                record.stallName.contains(queryLower, ignoreCase = true) ||
+                record.stallId.equals(queryLower, ignoreCase = true) ||
+                record.stallId.trimStart('0').equals(queryLower.trimStart('0'), ignoreCase = true)
             } else true
             
             val matchesCategory = if (selectedCategories.isNotEmpty()) {

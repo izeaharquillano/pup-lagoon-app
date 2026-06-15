@@ -1,14 +1,5 @@
 package com.example.pup_lagoon_app.ui.components
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,7 +19,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -44,6 +37,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -68,13 +63,11 @@ fun StallBottomSheetContent(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     stallImages: List<String> = emptyList(),
-    sheetStage: SheetStage = SheetStage.Halfway,
-    progressProvider: () -> Float = { 0.5f } // 0f = Minimized, 0.5f = Halfway, 1f = Full
+    progressProvider: () -> Float = { 0.5f }, // 0f = Minimized, 0.5f = Halfway, 1f = Full
+    isKept: Boolean = false,
+    onToggleKeep: (Boolean) -> Unit = {}
 ) {
-    val density = LocalDensity.current
     val foodListState = rememberLazyListState()
-    val progress = progressProvider()
-    val normalizedProgress = (progress / 0.5f).coerceIn(0f, 1f)
 
     Column(
         modifier = modifier
@@ -85,7 +78,17 @@ fun StallBottomSheetContent(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height((48 + (16 * normalizedProgress)).dp)
+                .layout { measurable, constraints ->
+                    val p = progressProvider()
+                    val normP = (p / 0.5f).coerceIn(0f, 1f)
+                    val height = lerp(48.dp, 64.dp, normP).roundToPx()
+                    val placeable = measurable.measure(
+                        constraints.copy(minHeight = height, maxHeight = height)
+                    )
+                    layout(placeable.width, placeable.height) {
+                        placeable.placeRelative(0, 0)
+                    }
+                }
                 .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -95,10 +98,12 @@ fun StallBottomSheetContent(
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
                     .graphicsLayer {
-                        alpha = normalizedProgress
-                        val scale = 0.75f + (0.25f * normalizedProgress)
-                        scaleX = scale * normalizedProgress
-                        scaleY = scale * normalizedProgress
+                        val p = progressProvider()
+                        val normP = (p / 0.5f).coerceIn(0f, 1f)
+                        alpha = normP
+                        val scale = 0.75f + (0.25f * normP)
+                        scaleX = scale * normP
+                        scaleY = scale * normP
                         transformOrigin = TransformOrigin(0f, 0.5f)
                     }
                     .size(40.dp)
@@ -108,7 +113,9 @@ fun StallBottomSheetContent(
                 modifier = Modifier
                     .width(12.dp)
                     .graphicsLayer {
-                        alpha = normalizedProgress
+                        val p = progressProvider()
+                        val normP = (p / 0.5f).coerceIn(0f, 1f)
+                        alpha = normP
                     }
             )
             
@@ -116,13 +123,15 @@ fun StallBottomSheetContent(
                 modifier = Modifier
                     .weight(1f)
                     .graphicsLayer {
+                        val p = progressProvider()
+                        val normP = (p / 0.5f).coerceIn(0f, 1f)
                         // Push up slightly as we expand to balance visual center with subtitle
-                        val upwardShift = with(density) { 10.dp.toPx() }
-                        translationY = -upwardShift * normalizedProgress
+                        val upwardShift = 10.dp.toPx()
+                        translationY = -upwardShift * normP
                         
                         // Shift left to fill the space of the hidden icon when minimized
-                        val shiftLeft = with(density) { 52.dp.toPx() } // 40dp (icon) + 12dp (spacer)
-                        translationX = -shiftLeft * (1f - normalizedProgress)
+                        val shiftLeft = 52.dp.toPx() // 40dp (icon) + 12dp (spacer)
+                        translationX = -shiftLeft * (1f - normP)
                     },
                 contentAlignment = Alignment.CenterStart
             ) {
@@ -144,7 +153,9 @@ fun StallBottomSheetContent(
                         color = Color.Black,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.alignByBaseline()
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .alignByBaseline()
                     )
                     
                     Spacer(modifier = Modifier.width(8.dp))
@@ -172,8 +183,28 @@ fun StallBottomSheetContent(
                         val p = progressProvider()
                         alpha = ((p - 0.2f) / 0.3f).coerceIn(0f, 1f)
                         // Offset below the center (Title is at center)
-                        translationY = with(density) { 24.dp.toPx() }
+                        translationY = 24.dp.toPx()
                     }
+                )
+            }
+
+            // Keep Pin Toggle
+            IconButton(
+                onClick = { onToggleKeep(!isKept) },
+                modifier = Modifier
+                    .size(48.dp)
+                    .graphicsLayer {
+                        val p = (progressProvider() / 0.5f).coerceIn(0f, 1f)
+                        alpha = p
+                        scaleX = p
+                        scaleY = p
+                    }
+            ) {
+                Icon(
+                    imageVector = if (isKept) Icons.Filled.PushPin else Icons.Outlined.PushPin,
+                    contentDescription = "Keep this pin",
+                    tint = if (isKept) MaterialTheme.colorScheme.primary else Color.Gray,
+                    modifier = Modifier.size(24.dp)
                 )
             }
 
@@ -274,7 +305,6 @@ fun StallBottomSheetHalfwayPreview() {
         foods = emptyList(),
         onDismiss = {},
         stallImages = listOf("https://via.placeholder.com/150"),
-        sheetStage = SheetStage.Halfway,
         progressProvider = { 0.5f }
     )
 }
@@ -288,7 +318,19 @@ fun StallBottomSheetMinimizedPreview() {
         foods = emptyList(),
         onDismiss = {},
         stallImages = listOf("https://via.placeholder.com/150"),
-        sheetStage = SheetStage.Minimized,
+        progressProvider = { 0f }
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun StallBottomSheetLongNamePreview() {
+    StallBottomSheetContent(
+        stallName = "Master Siomai / Potato Corner / Extremely Long Stall Name",
+        stallId = "01",
+        foods = emptyList(),
+        onDismiss = {},
+        stallImages = listOf("https://via.placeholder.com/150"),
         progressProvider = { 0f }
     )
 }

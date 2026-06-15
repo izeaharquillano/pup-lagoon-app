@@ -11,12 +11,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -39,7 +41,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
@@ -154,32 +155,7 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
         )
     }
 
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        " PUPili - Lagoon Food Helper",
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                },
-                navigationIcon = {
-                    Image(
-                        painter = painterResource(id = R.drawable.pup_logo),
-                        contentDescription = "PUP Logo",
-                        modifier = Modifier
-                            .padding(start = 12.dp)
-                            .size(36.dp)
-                            .clip(CircleShape)
-                    )
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Maroon
-                )
-            )
-        }
-    ) { innerPadding ->
+    Scaffold(contentWindowInsets = WindowInsets(0, 0, 0, 0)) { innerPadding ->
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
@@ -190,9 +166,9 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
             // Anchors for the 3-stage bottom sheet
             // Minimized: ~80dp from bottom (Handle + Header)
             // Halfway: 53% of screen height from top (47% from bottom)
-            val minimizedOffset = screenHeight - with(density) { 60.dp.toPx() }
+            val minimizedOffset = screenHeight - with(density) { 100.dp.toPx() }
             val halfwayOffset = screenHeight * 0.53f
-            val fullOffset = with(density) { 100.dp.toPx() }
+            val fullOffset = with(density) { 40.dp.toPx() }
 
             val anchors = remember(screenHeight) {
                 DraggableAnchors {
@@ -247,7 +223,13 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                 contentAspectRatio = if (mapSize.width > 0) mapSize.width / mapSize.height else 1f,
                 initialCenterPixel = Offset(1818f, 1281f),
                 targetCenterPixel = viewModel.selectedStallLocation,
+                selectedStallIds = viewModel.selectedStallIds,
+                selectedStallLocations = viewModel.selectedStallLocations,
                 contentFullSize = IntSize(mapSize.width.toInt(), mapSize.height.toInt()),
+                keptPins = viewModel.keptStallLocations,
+                onPinClick = { stallId ->
+                    viewModel.selectStallById(stallId)
+                },
                 onInteraction = {
                     if (anchoredDraggableState.currentValue != SheetStage.Minimized) {
                         scope.launch {
@@ -276,7 +258,7 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(16.dp),
+                    .padding(start = 16.dp, end = 16.dp, top = 40.dp, bottom = 0.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 val hasActiveFilterOrSearch by remember {
@@ -312,7 +294,7 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                                 onValueChange = { viewModel.onSearchQueryChange(it) },
                                 placeholder = { 
                                     Text(
-                                        "Search by food name",
+                                        "Search food or stall",
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     ) 
@@ -551,7 +533,9 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                             onDismiss = { viewModel.clearSelection() },
                             modifier = Modifier.weight(1f),
                             stallImages = viewModel.selectedStallImages,
-                            progressProvider = sheetProgressProvider
+                            progressProvider = sheetProgressProvider,
+                            isKept = viewModel.isCurrentStallKept,
+                            onToggleKeep = { viewModel.toggleKeepStall(viewModel.selectedStallId ?: "") }
                         )
                     }
                 }
