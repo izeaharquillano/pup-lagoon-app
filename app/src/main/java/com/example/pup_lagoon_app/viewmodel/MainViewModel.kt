@@ -64,6 +64,9 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
     var selectedStallId by mutableStateOf<String?>(null)
         private set
 
+    var displayStallId by mutableStateOf<String?>(null)
+        private set
+
     var selectedStallName by mutableStateOf<String?>(null)
         private set
 
@@ -181,19 +184,37 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
     }
 
     fun toggleKeepStall(stallId: String) {
-        keptStallIds = if (stallId in keptStallIds) {
-            keptStallIds - stallId
+        val isWaterStation = stallId == "14" || stallId == "16"
+        val idsToToggle = if (isWaterStation) setOf("14", "16") else setOf(stallId)
+        
+        val anyInKept = idsToToggle.any { it in keptStallIds }
+        
+        keptStallIds = if (anyInKept) {
+            keptStallIds - idsToToggle
         } else {
-            keptStallIds + stallId
+            keptStallIds + idsToToggle
         }
     }
 
     fun selectStallById(stallId: String) {
-        val location = repository.getStallLocation(stallId)
-        selectedStallLocation = location?.toOffset()
+        val isWaterStation = stallId == "14" || stallId == "16"
+        
+        if (isWaterStation) {
+            selectedStallIds = setOf("14", "16")
+            selectedStallName = "Water Refilling Station"
+            displayStallId = "14, #16"
+            // Use current stall for location if not already centering
+            val location = repository.getStallLocation(stallId)
+            selectedStallLocation = location?.toOffset()
+        } else {
+            selectedStallIds = setOf(stallId)
+            selectedStallName = repository.getAllRecords().find { it.stallId == stallId }?.stallName ?: "Unknown Stall"
+            displayStallId = stallId
+            val location = repository.getStallLocation(stallId)
+            selectedStallLocation = location?.toOffset()
+        }
+        
         selectedStallId = stallId
-        selectedStallIds = setOf(stallId)
-        selectedStallName = repository.getAllRecords().find { it.stallId == stallId }?.stallName ?: "Unknown Stall"
         selectedStallImages = repository.getStallImages(stallId)
         showResults = false
         showBottomSheet = true
@@ -212,8 +233,9 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
             val location = repository.getStallLocation("14")
             selectedStallLocation = location?.toOffset()
             selectedStallId = "14"
-            selectedStallName = "Water Refilling Stations"
-            selectedStallImages = repository.getStallImages("14") // Or a generic image if available
+            selectedStallName = "Water Refilling Station"
+            displayStallId = "14, #16"
+            selectedStallImages = repository.getStallImages("14")
             showResults = false
             showBottomSheet = true
         } else {
@@ -225,6 +247,7 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
         selectedStallLocation = null
         selectedStallId = null
         selectedStallIds = emptySet()
+        displayStallId = null
         selectedStallName = null
         selectedStallImages = emptyList()
         showBottomSheet = false
