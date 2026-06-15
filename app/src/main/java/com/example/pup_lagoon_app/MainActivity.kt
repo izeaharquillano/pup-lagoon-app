@@ -39,7 +39,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
@@ -317,7 +316,7 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                                 onValueChange = { viewModel.onSearchQueryChange(it) },
                                 placeholder = { 
                                     Text(
-                                        "Search by food name",
+                                        "Search food or stall",
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     ) 

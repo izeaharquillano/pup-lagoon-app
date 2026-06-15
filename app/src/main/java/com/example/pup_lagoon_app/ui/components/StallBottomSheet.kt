@@ -1,14 +1,5 @@
 package com.example.pup_lagoon_app.ui.components
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,9 +22,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.outlined.PushPin
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -75,7 +63,6 @@ fun StallBottomSheetContent(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     stallImages: List<String> = emptyList(),
-    sheetStage: SheetStage = SheetStage.Halfway,
     progressProvider: () -> Float = { 0.5f }, // 0f = Minimized, 0.5f = Halfway, 1f = Full
     isKept: Boolean = false,
     onToggleKeep: (Boolean) -> Unit = {}
@@ -166,7 +153,9 @@ fun StallBottomSheetContent(
                         color = Color.Black,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.alignByBaseline()
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .alignByBaseline()
                     )
                     
                     Spacer(modifier = Modifier.width(8.dp))
@@ -316,7 +305,6 @@ fun StallBottomSheetHalfwayPreview() {
         foods = emptyList(),
         onDismiss = {},
         stallImages = listOf("https://via.placeholder.com/150"),
-        sheetStage = SheetStage.Halfway,
         progressProvider = { 0.5f }
     )
 }
@@ -330,7 +318,19 @@ fun StallBottomSheetMinimizedPreview() {
         foods = emptyList(),
         onDismiss = {},
         stallImages = listOf("https://via.placeholder.com/150"),
-        sheetStage = SheetStage.Minimized,
+        progressProvider = { 0f }
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun StallBottomSheetLongNamePreview() {
+    StallBottomSheetContent(
+        stallName = "Master Siomai / Potato Corner / Extremely Long Stall Name",
+        stallId = "01",
+        foods = emptyList(),
+        onDismiss = {},
+        stallImages = listOf("https://via.placeholder.com/150"),
         progressProvider = { 0f }
     )
 }
