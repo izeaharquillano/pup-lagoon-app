@@ -208,5 +208,6 @@ stall_id,stall_name,food_id,food_name,food_price,food_categories
 10,"BAGNET, BBQ, atbp.",207,Naked Kare Kare Solo,₱99.00,"Rice Meal, Hot"
 10,"BAGNET, BBQ, atbp.",208,Naked Kare Kare Big,₱120.00,"Rice Meal, Hot"
 10,"BAGNET, BBQ, atbp.",209,Beef Samgyup,₱99.00,"Rice Meal, Hot"
-10,"BAGNET, BBQ, atbp.",210,Chicken Pastil w/ Rice,₱60.00,"Rice Meal, Hot"14,Water Refilling Station,W1,Water Refilling Station,₱0.00,Beverage
-16,Water Refilling Station,W2,Water Refilling Station,₱0.00,Beverage
+10,"BAGNET, BBQ, atbp.",210,Chicken Pastil w/ Rice,₱60.00,"Rice Meal, Hot"
+14,Water Refilling Station,W1,Water Refilling Station,₱5.00,Beverage
+16,Water Refilling Station,W2,Water Refilling Station,₱5.00,Beverage

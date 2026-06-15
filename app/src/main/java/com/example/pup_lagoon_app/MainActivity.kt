@@ -528,7 +528,7 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
 
                         StallBottomSheetContent(
                             stallName = viewModel.selectedStallName ?: "",
-                            stallId = viewModel.selectedStallId ?: "",
+                            stallId = viewModel.displayStallId ?: "",
                             foods = viewModel.stallFoods,
                             onDismiss = { viewModel.clearSelection() },
                             modifier = Modifier.weight(1f),

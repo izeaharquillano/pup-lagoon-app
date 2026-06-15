@@ -256,6 +256,11 @@ fun ZoomableBox(
                                     translationX = pinX - 27.dp.toPx()
                                     translationY = pinY - 54.dp.toPx()
                                 }
+                                .pointerInput(id) {
+                                    detectTapGestures {
+                                        onPinClick?.invoke(id)
+                                    }
+                                }
                         )
                     }
                 }
