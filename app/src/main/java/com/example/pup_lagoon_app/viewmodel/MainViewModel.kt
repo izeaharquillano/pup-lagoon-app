@@ -55,6 +55,9 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
 
     private val _manualSearchActive = MutableStateFlow(false)
 
+    var selectedStallIds by mutableStateOf<Set<String>>(emptySet())
+        private set
+
     var selectedStallLocation by mutableStateOf<Offset?>(null)
         private set
 
@@ -74,6 +77,12 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
 
     val isCurrentStallKept: Boolean by derivedStateOf {
         selectedStallId?.let { it in keptStallIds } ?: false
+    }
+
+    val selectedStallLocations: Map<String, Offset> by derivedStateOf {
+        selectedStallIds.associateWith { stallId ->
+            repository.getStallLocation(stallId)?.toOffset() ?: Offset.Zero
+        }.filter { it.value != Offset.Zero }
     }
 
     val keptStallLocations: Map<String, Offset> by derivedStateOf {
@@ -183,6 +192,7 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
         val location = repository.getStallLocation(stallId)
         selectedStallLocation = location?.toOffset()
         selectedStallId = stallId
+        selectedStallIds = setOf(stallId)
         selectedStallName = repository.getAllRecords().find { it.stallId == stallId }?.stallName ?: "Unknown Stall"
         selectedStallImages = repository.getStallImages(stallId)
         showResults = false
@@ -190,12 +200,31 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
     }
 
     fun selectResult(record: MergedRecords) {
-        selectStallById(record.stallId)
+        val queryLower = _searchQuery.value.lowercase().trim()
+        val baseNameLower = record.baseName.lowercase().trim()
+        
+        if (queryLower == "water refilling station" || baseNameLower == "water refilling station") {
+            // Special case: Select both 14 and 16
+            val ids = setOf("14", "16")
+            selectedStallIds = ids
+            
+            // Center on one of them (e.g., 14)
+            val location = repository.getStallLocation("14")
+            selectedStallLocation = location?.toOffset()
+            selectedStallId = "14"
+            selectedStallName = "Water Refilling Stations"
+            selectedStallImages = repository.getStallImages("14") // Or a generic image if available
+            showResults = false
+            showBottomSheet = true
+        } else {
+            selectStallById(record.stallId)
+        }
     }
 
     fun clearSelection() {
         selectedStallLocation = null
         selectedStallId = null
+        selectedStallIds = emptySet()
         selectedStallName = null
         selectedStallImages = emptyList()
         showBottomSheet = false
