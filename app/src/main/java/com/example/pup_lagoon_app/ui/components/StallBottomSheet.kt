@@ -28,7 +28,12 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -71,7 +76,9 @@ fun StallBottomSheetContent(
     modifier: Modifier = Modifier,
     stallImages: List<String> = emptyList(),
     sheetStage: SheetStage = SheetStage.Halfway,
-    progressProvider: () -> Float = { 0.5f } // 0f = Minimized, 0.5f = Halfway, 1f = Full
+    progressProvider: () -> Float = { 0.5f }, // 0f = Minimized, 0.5f = Halfway, 1f = Full
+    isKept: Boolean = false,
+    onToggleKeep: (Boolean) -> Unit = {}
 ) {
     val foodListState = rememberLazyListState()
 
@@ -189,6 +196,26 @@ fun StallBottomSheetContent(
                         // Offset below the center (Title is at center)
                         translationY = 24.dp.toPx()
                     }
+                )
+            }
+
+            // Keep Pin Toggle
+            IconButton(
+                onClick = { onToggleKeep(!isKept) },
+                modifier = Modifier
+                    .size(48.dp)
+                    .graphicsLayer {
+                        val p = (progressProvider() / 0.5f).coerceIn(0f, 1f)
+                        alpha = p
+                        scaleX = p
+                        scaleY = p
+                    }
+            ) {
+                Icon(
+                    imageVector = if (isKept) Icons.Filled.PushPin else Icons.Outlined.PushPin,
+                    contentDescription = "Keep this pin",
+                    tint = if (isKept) MaterialTheme.colorScheme.primary else Color.Gray,
+                    modifier = Modifier.size(24.dp)
                 )
             }
 

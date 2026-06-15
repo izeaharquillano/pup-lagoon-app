@@ -247,7 +247,12 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                 contentAspectRatio = if (mapSize.width > 0) mapSize.width / mapSize.height else 1f,
                 initialCenterPixel = Offset(1818f, 1281f),
                 targetCenterPixel = viewModel.selectedStallLocation,
+                selectedStallId = viewModel.selectedStallId,
                 contentFullSize = IntSize(mapSize.width.toInt(), mapSize.height.toInt()),
+                keptPins = viewModel.keptStallLocations,
+                onPinClick = { stallId ->
+                    viewModel.selectStallById(stallId)
+                },
                 onInteraction = {
                     if (anchoredDraggableState.currentValue != SheetStage.Minimized) {
                         scope.launch {
@@ -551,7 +556,9 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                             onDismiss = { viewModel.clearSelection() },
                             modifier = Modifier.weight(1f),
                             stallImages = viewModel.selectedStallImages,
-                            progressProvider = sheetProgressProvider
+                            progressProvider = sheetProgressProvider,
+                            isKept = viewModel.isCurrentStallKept,
+                            onToggleKeep = { viewModel.toggleKeepStall(viewModel.selectedStallId ?: "") }
                         )
                     }
                 }

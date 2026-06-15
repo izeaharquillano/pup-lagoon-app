@@ -1,12 +1,9 @@
 package com.example.pup_lagoon_app.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
@@ -43,7 +40,10 @@ fun ZoomableBox(
     initialScale: Float = 2.0f,
     initialCenterPixel: Offset? = null,
     targetCenterPixel: Offset? = null,
+    selectedStallId: String? = null,
     contentFullSize: IntSize? = null,
+    keptPins: Map<String, Offset> = emptyMap(),
+    onPinClick: ((String) -> Unit)? = null,
     onClick: (() -> Unit)? = null,
     onInteraction: (() -> Unit)? = null,
     content: @Composable () -> Unit,
@@ -128,7 +128,6 @@ fun ZoomableBox(
                 }
             }
 
-            // Handle target jumps (clicks) - only when target changes
             LaunchedEffect(targetCenterPixel, contentFullSize) {
                 if (targetCenterPixel != null && contentFullSize != null) {
                     // Force interaction to false so we use animated values for the jump
@@ -193,42 +192,70 @@ fun ZoomableBox(
             ) {
                 content()
 
-                // Pin Overlay - drawn on top of the content but within the same scaling box
-                AnimatedVisibility(
-                    visible = targetCenterPixel != null && contentFullSize != null,
-                    enter = fadeIn(),
-                    exit = fadeOut()
-                ) {
-                    if (targetCenterPixel != null && contentFullSize != null) {
-                        val fullWidth = contentFullSize.width.toFloat()
-                        val fullHeight = contentFullSize.height.toFloat()
+                // Render all kept pins
+                if (contentFullSize != null) {
+                    val fullWidth = contentFullSize.width.toFloat()
+                    val fullHeight = contentFullSize.height.toFloat()
 
-                        // These are coordinates within the baseWidth/baseHeight box (in pixels)
-                        val pinX = (targetCenterPixel.x / fullWidth) * baseWidth * density
-                        val pinY = (targetCenterPixel.y / fullHeight) * baseHeight * density
+                    keptPins.forEach { (id, location) ->
+                        // Skip if it's the currently selected stall
+                        if (id != selectedStallId) {
+                            val pinX = (location.x / fullWidth) * baseWidth * density
+                            val pinY = (location.y / fullHeight) * baseHeight * density
 
-                        Icon(
-                            imageVector = Icons.Default.LocationOn,
-                            contentDescription = "Stall Pin",
-                            tint = Color.Red,
-                            modifier = Modifier
-                                .size(54.dp)
-                                .graphicsLayer {
-                                    // Set the origin of all transformations to the bottom-center tip
-                                    transformOrigin = TransformOrigin(0.5f, 1f)
-
-                                    // INVERSE SCALING:
-                                    // This makes the pin stay the same visual size on the screen
-                                    scaleX = 1f / currentScale
-                                    scaleY = 1f / currentScale
-
-                                    // Position the bottom-center tip at (pinX, pinY)
-                                    // Since Box is TopStart, (0,0) is top-left.
-                                    translationX = pinX - 27.dp.toPx()
-                                    translationY = pinY - 54.dp.toPx()
-                                }
-                        )
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = "Kept Pin",
+                                tint = Color.Red.copy(alpha = 0.7f),
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .graphicsLayer {
+                                        transformOrigin = TransformOrigin(0.5f, 1f)
+                                        scaleX = 1f / currentScale
+                                        scaleY = 1f / currentScale
+                                        translationX = pinX - 22.dp.toPx()
+                                        translationY = pinY - 44.dp.toPx()
+                                    }
+                                    .pointerInput(id) {
+                                        detectTapGestures {
+                                            onPinClick?.invoke(id)
+                                        }
+                                    }
+                            )
+                        }
                     }
+                }
+
+                // Selected Pin Overlay
+                if (targetCenterPixel != null && contentFullSize != null) {
+                    val fullWidth = contentFullSize.width.toFloat()
+                    val fullHeight = contentFullSize.height.toFloat()
+
+                    // These are coordinates within the baseWidth/baseHeight box (in pixels)
+                    val pinX = (targetCenterPixel.x / fullWidth) * baseWidth * density
+                    val pinY = (targetCenterPixel.y / fullHeight) * baseHeight * density
+
+                    Icon(
+                        imageVector = Icons.Default.LocationOn,
+                        contentDescription = "Selected Stall Pin",
+                        tint = Color.Red,
+                        modifier = Modifier
+                            .size(54.dp)
+                            .graphicsLayer {
+                                // Set the origin of all transformations to the bottom-center tip
+                                transformOrigin = TransformOrigin(0.5f, 1f)
+
+                                // INVERSE SCALING:
+                                // This makes the pin stay the same visual size on the screen
+                                scaleX = 1f / currentScale
+                                scaleY = 1f / currentScale
+
+                                // Position the bottom-center tip at (pinX, pinY)
+                                // Since Box is TopStart, (0,0) is top-left.
+                                translationX = pinX - 27.dp.toPx()
+                                translationY = pinY - 54.dp.toPx()
+                            }
+                    )
                 }
             }
         }

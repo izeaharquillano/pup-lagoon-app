@@ -69,6 +69,19 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
 
     var showBottomSheet by mutableStateOf(false)
 
+    var keptStallIds by mutableStateOf(setOf<String>())
+        private set
+
+    val isCurrentStallKept: Boolean by derivedStateOf {
+        selectedStallId?.let { it in keptStallIds } ?: false
+    }
+
+    val keptStallLocations: Map<String, Offset> by derivedStateOf {
+        keptStallIds.associateWith { stallId ->
+            repository.getStallLocation(stallId)?.toOffset() ?: Offset.Zero
+        }.filter { it.value != Offset.Zero }
+    }
+
     val stallFoods: List<MergedRecords> by derivedStateOf {
         val stallId = selectedStallId ?: return@derivedStateOf emptyList<MergedRecords>()
         val foods = repository.getFoodsByStall(stallId)
@@ -158,14 +171,26 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
         showFilterDialog = !showFilterDialog
     }
 
-    fun selectResult(record: MergedRecords) {
-        val location = repository.getStallLocation(record.stallId)
+    fun toggleKeepStall(stallId: String) {
+        keptStallIds = if (stallId in keptStallIds) {
+            keptStallIds - stallId
+        } else {
+            keptStallIds + stallId
+        }
+    }
+
+    fun selectStallById(stallId: String) {
+        val location = repository.getStallLocation(stallId)
         selectedStallLocation = location?.toOffset()
-        selectedStallId = record.stallId
-        selectedStallName = record.stallName
-        selectedStallImages = repository.getStallImages(record.stallId)
+        selectedStallId = stallId
+        selectedStallName = repository.getAllRecords().find { it.stallId == stallId }?.stallName ?: "Unknown Stall"
+        selectedStallImages = repository.getStallImages(stallId)
         showResults = false
         showBottomSheet = true
+    }
+
+    fun selectResult(record: MergedRecords) {
+        selectStallById(record.stallId)
     }
 
     fun clearSelection() {
