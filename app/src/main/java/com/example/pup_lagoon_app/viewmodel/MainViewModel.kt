@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.pup_lagoon_app.data.FoodRecord
 import com.example.pup_lagoon_app.data.MergedRecords
 import com.example.pup_lagoon_app.data.FoodRepository
+import com.example.pup_lagoon_app.data.MapLabel
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -99,6 +100,8 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
         val foods = repository.getFoodsByStall(stallId)
         groupFoodRecords(foods)
     }
+
+    val mapLabels: List<MapLabel> = repository.getMapLabels()
 
     val searchResults: StateFlow<List<MergedRecords>> = combine(
         _searchQuery,

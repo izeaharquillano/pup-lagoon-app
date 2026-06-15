@@ -228,6 +228,7 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                 selectedStallLocations = viewModel.selectedStallLocations,
                 contentFullSize = IntSize(mapSize.width.toInt(), mapSize.height.toInt()),
                 keptPins = viewModel.keptStallLocations,
+                mapLabels = viewModel.mapLabels,
                 onPinClick = { stallId ->
                     viewModel.selectStallById(stallId)
                 },
@@ -250,7 +251,7 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                     painter = mapPainter,
                     contentDescription = "University Map",
                     modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.FillBounds,
+                    contentScale = ContentScale.Fit,
                     alpha = 1.0f
                 )
             }

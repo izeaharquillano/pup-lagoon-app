@@ -8,11 +8,17 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -22,14 +28,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.pup_lagoon_app.data.LabelType
+import com.example.pup_lagoon_app.data.MapLabel
 
 @Composable
 fun ZoomableBox(
@@ -44,6 +56,7 @@ fun ZoomableBox(
     selectedStallLocations: Map<String, Offset> = emptyMap(),
     contentFullSize: IntSize? = null,
     keptPins: Map<String, Offset> = emptyMap(),
+    mapLabels: List<MapLabel> = emptyList(),
     onPinClick: ((String) -> Unit)? = null,
     onClick: (() -> Unit)? = null,
     onInteraction: (() -> Unit)? = null,
@@ -262,6 +275,75 @@ fun ZoomableBox(
                                     }
                                 }
                         )
+                    }
+
+                    // Render Map Labels
+                    mapLabels.forEach { label ->
+                        val labelX = (label.pixelX / fullWidth) * baseWidth * density
+                        val labelY = (label.pixelY / fullHeight) * baseHeight * density
+
+                        Box(
+                            modifier = Modifier
+                                .graphicsLayer {
+                                    transformOrigin = TransformOrigin(0.5f, 0.5f)
+                                    scaleX = 1f / currentScale
+                                    scaleY = 1f / currentScale
+                                    translationX = labelX - (100.dp.toPx() / 2f)
+                                    translationY = labelY - (50.dp.toPx() / 2f)
+                                }
+                                .size(width = 100.dp, height = 50.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            when (label.type) {
+                                LabelType.BUILDING -> {
+                                    Surface(
+                                        color = Color.White.copy(alpha = 0.8f),
+                                        shape = RoundedCornerShape(4.dp),
+                                        shadowElevation = 2.dp
+                                    ) {
+                                        Text(
+                                            text = label.text,
+                                            style = MaterialTheme.typography.labelMedium.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 10.sp
+                                            ),
+                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                                            color = Color.Black
+                                        )
+                                    }
+                                }
+                                LabelType.STREET -> {
+                                    Text(
+                                        text = label.text,
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontStyle = FontStyle.Italic,
+                                            fontSize = 8.sp,
+                                            fontWeight = FontWeight.Medium
+                                        ),
+                                        color = Color.DarkGray.copy(alpha = 0.7f),
+                                        modifier = Modifier.rotate(label.rotation)
+                                    )
+                                }
+                                LabelType.LANDMARK -> {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Default.Place,
+                                            contentDescription = null,
+                                            tint = Color.Gray.copy(alpha = 0.6f),
+                                            modifier = Modifier.size(16.dp).graphicsLayer { translationY = -12.dp.toPx() }
+                                        )
+                                        Text(
+                                            text = label.text,
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.SemiBold
+                                            ),
+                                            color = Color.Gray
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }

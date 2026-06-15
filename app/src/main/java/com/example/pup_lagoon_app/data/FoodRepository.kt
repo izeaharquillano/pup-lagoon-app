@@ -10,10 +10,40 @@ class FoodRepository(private val context: Context) {
     private val priceTree = BTree<Double, FoodRecord>(5)
     private val allCategories = mutableSetOf<String>()
     private val stallLocations = mutableMapOf<String, StallLocation>()
+    private val mapLabels = mutableListOf<MapLabel>()
 
     init {
         loadStallLocations()
+        loadMapLabels()
         loadFromCsv()
+    }
+
+    private fun loadMapLabels() {
+        try {
+            val inputStream = context.assets.open("map_labels.csv")
+            val reader = BufferedReader(InputStreamReader(inputStream))
+            reader.readLine() // Skip header
+            
+            var line: String? = reader.readLine()
+            while (line != null) {
+                val tokens = line.split(",")
+                if (tokens.size >= 5) {
+                    val id = tokens[0].trim()
+                    val text = tokens[1].trim()
+                    val x = tokens[2].trim().toFloatOrNull() ?: 0f
+                    val y = tokens[3].trim().toFloatOrNull() ?: 0f
+                    val typeStr = tokens[4].trim().uppercase()
+                    val type = try { LabelType.valueOf(typeStr) } catch (e: Exception) { LabelType.LANDMARK }
+                    val rotation = if (tokens.size >= 6) tokens[5].trim().toFloatOrNull() ?: 0f else 0f
+                    
+                    mapLabels.add(MapLabel(id, text, x, y, type, rotation))
+                }
+                line = reader.readLine()
+            }
+            reader.close()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     private fun loadStallLocations() {
@@ -185,6 +215,10 @@ class FoodRepository(private val context: Context) {
 
     fun getStallLocation(stallId: String): StallLocation? {
         return stallLocations[stallId]
+    }
+
+    fun getMapLabels(): List<MapLabel> {
+        return mapLabels
     }
 
     fun getStallImages(stallId: String): List<String> {
