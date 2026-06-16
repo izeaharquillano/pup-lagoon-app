@@ -1,5 +1,6 @@
 package com.example.pup_lagoon_app.data
 
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.geometry.Offset
 
 enum class LabelType {
@@ -8,6 +9,7 @@ enum class LabelType {
     LANDMARK
 }
 
+@Immutable
 data class MapLabel(
     val id: String,
     val text: String,

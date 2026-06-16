@@ -11,6 +11,7 @@ import com.example.pup_lagoon_app.data.FoodRecord
 import com.example.pup_lagoon_app.data.MergedRecords
 import com.example.pup_lagoon_app.data.FoodRepository
 import com.example.pup_lagoon_app.data.MapLabel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
@@ -90,6 +92,10 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
 
     var isGuidanceMinimized by mutableStateOf(false)
 
+    var bottomSheetStage by mutableStateOf(com.example.pup_lagoon_app.SheetStage.Minimized)
+
+    var lastActiveStage by mutableStateOf(com.example.pup_lagoon_app.SheetStage.Halfway)
+
     var keptStallIds by mutableStateOf(setOf<String>())
         private set
 
@@ -136,7 +142,7 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
         params
     }.debounce { params ->
         // Immediate clear when query is empty, otherwise debounce
-        if (params.query.isEmpty() || params.manualActive) 0L else 200L
+        if (params.query.isEmpty() || params.manualActive) 0L else 150L
     }.map { params ->
         val min = params.minStr.toDoubleOrNull() ?: 0.0
         val max = params.maxStr.toDoubleOrNull() ?: Double.MAX_VALUE
@@ -159,7 +165,8 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
         }
         _isSearching.value = false
         results
-    }.stateIn(
+    }.flowOn(Dispatchers.Default)
+    .stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
@@ -306,7 +313,7 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
         guidanceText = null
         availableGates = emptyList()
         selectedGateId = null
-        isGuidanceMinimized = false
+        // Removed isGuidanceMinimized = false to persist state
     }
 
     fun getAllCategories(): List<String> {

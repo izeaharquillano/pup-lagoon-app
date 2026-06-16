@@ -5,79 +5,31 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Directions
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.material.icons.filled.Place
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.BottomSheetScaffold
-import androidx.compose.material3.rememberBottomSheetScaffoldState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import com.example.pup_lagoon_app.ui.components.StallBottomSheetContent
 import androidx.compose.animation.*
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.AnchoredDraggableDefaults
 import androidx.compose.foundation.gestures.AnchoredDraggableState
-import androidx.compose.animation.core.exponentialDecay
 import androidx.compose.foundation.gestures.DraggableAnchors
-import androidx.compose.foundation.gestures.FlingBehavior
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.anchoredDraggable
 import androidx.compose.foundation.gestures.animateTo
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.offset
-import androidx.compose.animation.core.tween
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.IntOffset
-import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -90,7 +42,6 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -104,7 +55,6 @@ import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.pup_lagoon_app.data.FoodRepository
-import com.example.pup_lagoon_app.data.MergedRecords
 import com.example.pup_lagoon_app.ui.components.FilterDialog
 import com.example.pup_lagoon_app.ui.components.FoodItemCard
 import com.example.pup_lagoon_app.ui.components.ZoomableBox
@@ -112,9 +62,9 @@ import com.example.pup_lagoon_app.ui.theme.Maroon
 import com.example.pup_lagoon_app.ui.theme.PuplagoonappTheme
 import com.example.pup_lagoon_app.ui.utils.scrollbar
 import com.example.pup_lagoon_app.viewmodel.MainViewModel
+import kotlinx.coroutines.CoroutineScope
 
 class MainActivity : ComponentActivity() {
-    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -132,8 +82,6 @@ enum class SheetStage { Minimized, Halfway, Full }
 @Composable
 fun MainScreen(viewModelOverride: MainViewModel? = null) {
     val context = LocalContext.current
-    val density = LocalDensity.current
-    val scope = rememberCoroutineScope()
     val repository = remember { FoodRepository(context) }
     val viewModel: MainViewModel = viewModelOverride ?: viewModel(
         factory = object : androidx.lifecycle.ViewModelProvider.Factory {
@@ -144,14 +92,14 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
         }
     )
 
-    val searchQuery by viewModel.searchQuery.collectAsState()
-    val searchResults by viewModel.searchResults.collectAsState()
-    val isSearching by viewModel.isSearching.collectAsState()
-    val selectedCategories by viewModel.selectedCategories.collectAsState()
-    val minPrice by viewModel.minPrice.collectAsState()
-    val maxPrice by viewModel.maxPrice.collectAsState()
+    val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
 
     if (viewModel.showFilterDialog) {
+        val selectedCategories by viewModel.selectedCategories.collectAsState()
+        val minPrice by viewModel.minPrice.collectAsState()
+        val maxPrice by viewModel.maxPrice.collectAsState()
+
         FilterDialog(
             categories = viewModel.getAllCategories(),
             selectedCategories = selectedCategories,
@@ -172,14 +120,10 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
         ) {
             val screenHeight = constraints.maxHeight.toFloat()
             
-            // Anchors for the 3-stage bottom sheet
-            // Minimized: ~80dp from bottom (Handle + Header)
-            // Halfway: 53% of screen height from top (47% from bottom)
-            val minimizedOffset = screenHeight - with(density) { 100.dp.toPx() }
-            val halfwayOffset = screenHeight * 0.53f
-            val fullOffset = with(density) { 40.dp.toPx() }
-
-            val anchors = remember(screenHeight) {
+            val anchors = remember(screenHeight, density) {
+                val minimizedOffset = screenHeight - with(density) { 100.dp.toPx() }
+                val halfwayOffset = screenHeight * 0.53f
+                val fullOffset = with(density) { 40.dp.toPx() }
                 DraggableAnchors {
                     SheetStage.Minimized at minimizedOffset
                     SheetStage.Halfway at halfwayOffset
@@ -187,16 +131,27 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                 }
             }
 
-            val snapAnimationSpec = spring<Float>(
-                dampingRatio = Spring.DampingRatioNoBouncy,
-                stiffness = 3000f // Balanced stiffness for snappy yet smooth feel
-            )
+            val snapAnimationSpec = remember {
+                spring<Float>(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = 3000f
+                )
+            }
 
             val anchoredDraggableState = remember(anchors) {
                 AnchoredDraggableState(
-                    initialValue = SheetStage.Minimized,
+                    initialValue = if (viewModel.bottomSheetStage == SheetStage.Minimized && viewModel.selectedStallId != null) 
+                        SheetStage.Halfway else viewModel.bottomSheetStage,
                     anchors = anchors
                 )
+            }
+
+            // Sync state back to ViewModel
+            LaunchedEffect(anchoredDraggableState.currentValue) {
+                viewModel.bottomSheetStage = anchoredDraggableState.currentValue
+                if (anchoredDraggableState.currentValue != SheetStage.Minimized) {
+                    viewModel.lastActiveStage = anchoredDraggableState.currentValue
+                }
             }
 
             val flingBehavior = AnchoredDraggableDefaults.flingBehavior(
@@ -205,72 +160,15 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                 animationSpec = snapAnimationSpec
             )
 
-            // Lambda provider for progress to avoid recomposition
-            val sheetProgressProvider = remember(anchoredDraggableState, minimizedOffset, fullOffset) {
-                {
-                    val offset = try { anchoredDraggableState.requireOffset() } catch (_: Exception) { minimizedOffset }
-                    val totalRange = minimizedOffset - fullOffset
-                    if (totalRange > 0) {
-                        ((minimizedOffset - offset) / totalRange).coerceIn(0f, 1f)
-                    } else 0f
-                }
-            }
-
-            // Reset to Halfway when a new stall is selected
+            // Animate to the last active stage when a new stall is selected
             LaunchedEffect(viewModel.selectedStallId) {
                 if (viewModel.selectedStallId != null) {
-                    anchoredDraggableState.animateTo(SheetStage.Halfway)
+                    anchoredDraggableState.animateTo(viewModel.lastActiveStage)
                 }
             }
 
             // LAYER 1: Background Map Image
-            val mapPainter = painterResource(id = R.drawable.university_map)
-            val mapSize = mapPainter.intrinsicSize
-            
-            ZoomableBox(
-                modifier = Modifier.fillMaxSize(),
-                contentAspectRatio = if (mapSize.width > 0) mapSize.width / mapSize.height else 1f,
-                initialScale = 1.7f,
-                initialCenterPixel = Offset(1787f, 1272f),
-                targetCenterPixel = viewModel.selectedStallLocation,
-                selectedStallIds = viewModel.selectedStallIds,
-                selectedStallLocations = viewModel.selectedStallLocations,
-                contentFullSize = IntSize(mapSize.width.toInt(), mapSize.height.toInt()),
-                keptPins = viewModel.keptStallLocations,
-                mapLabels = viewModel.mapLabels,
-                navigationPath = viewModel.navigationPath,
-                selectedGateId = viewModel.selectedGateId,
-                onPinClick = { stallId ->
-                    viewModel.selectStallById(stallId)
-                },
-                onLandmarkClick = { landmarkId ->
-                    if (viewModel.selectedStallId != null) {
-                        viewModel.updateRoute(landmarkId)
-                    }
-                },
-                onInteraction = {
-                    if (anchoredDraggableState.currentValue != SheetStage.Minimized) {
-                        scope.launch {
-                            anchoredDraggableState.animateTo(SheetStage.Minimized)
-                        }
-                    }
-                },
-                onClick = {
-                    if (anchoredDraggableState.currentValue != SheetStage.Minimized) {
-                        scope.launch {
-                            anchoredDraggableState.animateTo(SheetStage.Minimized)
-                        }
-                    }
-                }
-            ) {
-                Image(
-                    painter = mapPainter,
-                    contentDescription = "University Map",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit,
-                    alpha = 1.0f
-                )
-            }
+            MapLayer(viewModel, anchoredDraggableState, scope)
 
             // LAYER 2: UI Search Content
             Column(
@@ -279,373 +177,435 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                     .padding(start = 16.dp, end = 16.dp, top = 40.dp, bottom = 0.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                val hasActiveFilterOrSearch by remember {
-                    derivedStateOf {
-                        viewModel.showResults && (
-                            searchResults.isNotEmpty() || 
-                            (searchQuery.length >= 2) || 
-                            selectedCategories.isNotEmpty() ||
-                            minPrice.isNotBlank() ||
-                            maxPrice.isNotBlank()
-                        )
-                    }
-                }
-
-                // Unified Search Panel
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .shadow(4.dp, RoundedCornerShape(28.dp)),
-                    color = Color.White,
-                    shape = RoundedCornerShape(28.dp)
-                ) {
-                    Column {
-                        // Search Bar Area
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 2.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            OutlinedTextField(
-                                value = searchQuery,
-                                onValueChange = { viewModel.onSearchQueryChange(it) },
-                                placeholder = { 
-                                    Text(
-                                        "Search food or stall",
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    ) 
-                                },
-                                modifier = Modifier
-                                    .weight(1f),
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                                keyboardActions = KeyboardActions(onSearch = { viewModel.performManualSearch() }),
-                                trailingIcon = {
-                                    if (searchQuery.isNotEmpty()) {
-                                        IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
-                                            Icon(
-                                                imageVector = Icons.Default.Clear,
-                                                contentDescription = "Clear search",
-                                                tint = Maroon
-                                            )
-                                        }
-                                    }
-                                },
-                                shape = RoundedCornerShape(28.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedContainerColor = Color.Transparent,
-                                    unfocusedContainerColor = Color.Transparent,
-                                    focusedBorderColor = Color.Transparent,
-                                    unfocusedBorderColor = Color.Transparent,
-                                )
-                            )
-                            
-                            IconButton(
-                                onClick = { viewModel.toggleFilterDialog() },
-                                modifier = Modifier.padding(end = 4.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.FilterList,
-                                    contentDescription = "Filter",
-                                    tint = Maroon
-                                )
-                            }
-
-                            IconButton(
-                                onClick = { viewModel.performManualSearch() },
-                                modifier = Modifier
-                                    .padding(4.dp)
-                                    .background(
-                                        Maroon,
-                                        RoundedCornerShape(24.dp)
-                                    )
-                                    .size(40.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Search,
-                                    contentDescription = "Search",
-                                    tint = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-
-                        if (hasActiveFilterOrSearch) {
-                            HorizontalDivider(
-                                modifier = Modifier.padding(horizontal = 16.dp),
-                                thickness = 1.dp,
-                                color = Color.LightGray
-                            )
-
-                            Column(
-                                modifier = Modifier
-                                    .padding(12.dp)
-                                    .heightIn(max = 500.dp)
-                            ) {
-                                if (selectedCategories.isNotEmpty() || minPrice.isNotBlank() || maxPrice.isNotBlank()) {
-                                    Surface(
-                                        color = MaterialTheme.colorScheme.primaryContainer,
-                                        shape = RoundedCornerShape(4.dp)
-                                    ) {
-                                        Text(
-                                            text = "Filters: ${selectedCategories.size} categories" + 
-                                                   (if (minPrice.isNotBlank() || maxPrice.isNotBlank()) ", price range" else ""),
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                }
-
-                                if (searchResults.isEmpty()) {
-                                    if (!isSearching) {
-                                        Text(
-                                            text = "No results found",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.secondary,
-                                            modifier = Modifier.padding(8.dp)
-                                        )
-                                    } else {
-                                        // Optional: Show a small loading indicator or just empty space
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(16.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            CircularProgressIndicator(
-                                                modifier = Modifier.size(24.dp),
-                                                strokeWidth = 2.dp,
-                                                color = Maroon
-                                            )
-                                        }
-                                    }
-                                } else {
-                                    val listState = rememberLazyListState()
-                                    LazyColumn(
-                                        state = listState,
-                                        modifier = Modifier.scrollbar(listState, autoHide = true)
-                                    ) {
-                                        items(
-                                            items = searchResults,
-                                            key = { it.id },
-                                            contentType = { "food_card" }
-                                        ) { record ->
-                                            FoodItemCard(record, onClick = { viewModel.selectResult(record) })
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // LAYER 2.5: Floating Guidance Card
-                if (viewModel.guidanceText != null && !viewModel.showResults) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    
-                    if (viewModel.isGuidanceMinimized) {
-                        // Minimized Circle Icon
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(end = 6.dp),
-                            contentAlignment = Alignment.CenterEnd
-                        ) {
-                            IconButton(
-                                onClick = { viewModel.isGuidanceMinimized = false },
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .shadow(4.dp, CircleShape)
-                                    .background(Maroon, CircleShape)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Directions,
-                                    contentDescription = "Show directions",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-                    } else {
-                        // Expanded Guidance Card
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .shadow(4.dp, RoundedCornerShape(16.dp)),
-                            color = Color.White,
-                            shape = RoundedCornerShape(16.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Directions,
-                                        contentDescription = null,
-                                        tint = Maroon,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = "Directions from:",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.Black
-                                    )
-                                    Spacer(modifier = Modifier.weight(1f))
-                                    
-                                    IconButton(
-                                        onClick = { viewModel.isGuidanceMinimized = true },
-                                        modifier = Modifier.size(24.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Remove,
-                                            contentDescription = "Minimize",
-                                            tint = Color.Gray,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                }
-                                
-                                Spacer(modifier = Modifier.height(12.dp))
-                                
-                                Surface(
-                                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
-                                    shape = RoundedCornerShape(8.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text(
-                                        text = viewModel.guidanceText ?: "",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.padding(12.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
+                SearchLayer(viewModel)
+                GuidanceLayer(viewModel)
             }
 
             // LAYER 3: 3-Stage Bottom Sheet
             if (viewModel.showBottomSheet) {
-                val nestedScrollConnection = remember(anchoredDraggableState, fullOffset) {
-                    object : NestedScrollConnection {
-                        override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                            val delta = available.y
-                            // Swiping UP (delta < 0) - Only consume if the sheet can move up
-                            return if (delta < 0 && source == NestedScrollSource.UserInput && 
-                                anchoredDraggableState.requireOffset() > fullOffset) {
-                                val consumed = anchoredDraggableState.dispatchRawDelta(delta)
-                                Offset(x = 0f, y = consumed)
-                            } else {
-                                Offset.Zero
+                BottomSheetLayer(viewModel, anchoredDraggableState, flingBehavior)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun MapLayer(
+    viewModel: MainViewModel,
+    anchoredDraggableState: AnchoredDraggableState<SheetStage>,
+    scope: CoroutineScope
+) {
+    val mapPainter = painterResource(id = R.drawable.university_map)
+    val mapSize = mapPainter.intrinsicSize
+    
+    ZoomableBox(
+        modifier = Modifier.fillMaxSize(),
+        contentAspectRatio = if (mapSize.width > 0) mapSize.width / mapSize.height else 1f,
+        initialScale = 1.7f,
+        initialCenterPixel = Offset(1787f, 1272f),
+        targetCenterPixel = viewModel.selectedStallLocation,
+        selectedStallIds = viewModel.selectedStallIds,
+        selectedStallLocations = viewModel.selectedStallLocations,
+        contentFullSize = IntSize(mapSize.width.toInt(), mapSize.height.toInt()),
+        keptPins = viewModel.keptStallLocations,
+        mapLabels = viewModel.mapLabels,
+        navigationPath = viewModel.navigationPath,
+        selectedGateId = viewModel.selectedGateId,
+        onPinClick = { stallId ->
+            viewModel.selectStallById(stallId)
+        },
+        onLandmarkClick = { landmarkId ->
+            if (viewModel.selectedStallId != null) {
+                viewModel.updateRoute(landmarkId)
+            }
+        },
+        onInteraction = {
+            if (anchoredDraggableState.currentValue != SheetStage.Minimized) {
+                scope.launch {
+                    anchoredDraggableState.animateTo(SheetStage.Minimized)
+                }
+            }
+        },
+        onClick = {
+            if (anchoredDraggableState.currentValue != SheetStage.Minimized) {
+                scope.launch {
+                    anchoredDraggableState.animateTo(SheetStage.Minimized)
+                }
+            }
+        }
+    ) {
+        Image(
+            painter = mapPainter,
+            contentDescription = "University Map",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Fit,
+            alpha = 1.0f
+        )
+    }
+}
+
+@Composable
+private fun SearchLayer(viewModel: MainViewModel) {
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val searchResults by viewModel.searchResults.collectAsState()
+    val isSearching by viewModel.isSearching.collectAsState()
+    val selectedCategories by viewModel.selectedCategories.collectAsState()
+    val minPrice by viewModel.minPrice.collectAsState()
+    val maxPrice by viewModel.maxPrice.collectAsState()
+
+    val hasActiveFilterOrSearch by remember {
+        derivedStateOf {
+            viewModel.showResults && (
+                searchResults.isNotEmpty() || 
+                (searchQuery.length >= 2) || 
+                selectedCategories.isNotEmpty() ||
+                minPrice.isNotBlank() ||
+                maxPrice.isNotBlank()
+            )
+        }
+    }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(4.dp, RoundedCornerShape(28.dp)),
+        color = Color.White,
+        shape = RoundedCornerShape(28.dp)
+    ) {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { viewModel.onSearchQueryChange(it) },
+                    placeholder = { 
+                        Text(
+                            "Search food or stall",
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        ) 
+                    },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { viewModel.performManualSearch() }),
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
+                                Icon(
+                                    imageVector = Icons.Default.Clear,
+                                    contentDescription = "Clear search",
+                                    tint = Maroon
+                                )
                             }
                         }
+                    },
+                    shape = RoundedCornerShape(28.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedBorderColor = Color.Transparent,
+                        unfocusedBorderColor = Color.Transparent,
+                    )
+                )
+                
+                IconButton(
+                    onClick = { viewModel.toggleFilterDialog() },
+                    modifier = Modifier.padding(end = 4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.FilterList,
+                        contentDescription = "Filter",
+                        tint = Maroon
+                    )
+                }
 
-                        override fun onPostScroll(
-                            consumed: Offset,
-                            available: Offset,
-                            source: NestedScrollSource
-                        ): Offset {
-                            val delta = available.y
-                            // Swiping DOWN (delta > 0)
-                            return if (delta > 0 && source == NestedScrollSource.UserInput) {
-                                val dragConsumed = anchoredDraggableState.dispatchRawDelta(delta)
-                                Offset(x = 0f, y = dragConsumed)
-                            } else {
-                                Offset.Zero
+                IconButton(
+                    onClick = { viewModel.performManualSearch() },
+                    modifier = Modifier
+                        .padding(4.dp)
+                        .background(Maroon, RoundedCornerShape(24.dp))
+                        .size(40.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            if (hasActiveFilterOrSearch) {
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    thickness = 1.dp,
+                    color = Color.LightGray
+                )
+
+                Column(
+                    modifier = Modifier
+                        .padding(12.dp)
+                        .heightIn(max = 500.dp)
+                ) {
+                    if (selectedCategories.isNotEmpty() || minPrice.isNotBlank() || maxPrice.isNotBlank()) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                text = "Filters: ${selectedCategories.size} categories" + 
+                                       (if (minPrice.isNotBlank() || maxPrice.isNotBlank()) ", price range" else ""),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
+                    if (searchResults.isEmpty()) {
+                        if (!isSearching) {
+                            Text(
+                                text = "No results found",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.padding(8.dp)
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    strokeWidth = 2.dp,
+                                    color = Maroon
+                                )
                             }
                         }
-
-                        override suspend fun onPreFling(available: Velocity): Velocity {
-                            val toFling = available.y
-                            // Swiping UP (toFling < 0) - Only consume if the sheet can move up
-                            return if (toFling < 0 && anchoredDraggableState.requireOffset() > fullOffset) {
-                                val scrollScope = object : androidx.compose.foundation.gestures.ScrollScope {
-                                    override fun scrollBy(pixels: Float): Float {
-                                        return anchoredDraggableState.dispatchRawDelta(pixels)
-                                    }
-                                }
-                                with(flingBehavior) {
-                                    scrollScope.performFling(toFling)
-                                }
-                                available
-                            } else {
-                                Velocity.Zero
+                    } else {
+                        val listState = rememberLazyListState()
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.scrollbar(listState, autoHide = true)
+                        ) {
+                            items(
+                                items = searchResults,
+                                key = { it.id },
+                                contentType = { "food_card" }
+                            ) { record ->
+                                FoodItemCard(record, onClick = { viewModel.selectResult(record) })
                             }
-                        }
-
-                        override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                            val toFling = available.y
-                            // Swiping DOWN (toFling > 0) - Always handle what's left to move sheet down
-                            if (toFling > 0) {
-                                val scrollScope = object : androidx.compose.foundation.gestures.ScrollScope {
-                                    override fun scrollBy(pixels: Float): Float {
-                                        return anchoredDraggableState.dispatchRawDelta(pixels)
-                                    }
-                                }
-                                with(flingBehavior) {
-                                    scrollScope.performFling(toFling)
-                                }
-                                return available
-                            }
-                            return Velocity.Zero
                         }
                     }
                 }
+            }
+        }
+    }
+}
 
-                Surface(
+@Composable
+private fun GuidanceLayer(viewModel: MainViewModel) {
+    if (viewModel.guidanceText != null && !viewModel.showResults) {
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        if (viewModel.isGuidanceMinimized) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(end = 2.dp),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                IconButton(
+                    onClick = { viewModel.isGuidanceMinimized = false },
                     modifier = Modifier
-                        .graphicsLayer {
-                            translationY = anchoredDraggableState.requireOffset()
-                        }
-                        .fillMaxSize()
-                        .anchoredDraggable(
-                            state = anchoredDraggableState,
-                            orientation = Orientation.Vertical,
-                            flingBehavior = flingBehavior
-                        )
-                        .nestedScroll(nestedScrollConnection),
-                    shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-                    color = Color.White,
-                    shadowElevation = 16.dp
+                        .padding(4.dp)
+                        .shadow(4.dp, CircleShape)
+                        .background(Maroon, CircleShape)
+                        .size(40.dp)
                 ) {
-                    Column {
-                        // Custom Drag Handle
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            contentAlignment = Alignment.Center
+                    Icon(
+                        imageVector = Icons.Default.Directions,
+                        contentDescription = "Show directions",
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+        } else {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .shadow(4.dp, RoundedCornerShape(16.dp)),
+                color = Color.White,
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Directions,
+                            contentDescription = null,
+                            tint = Maroon,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Directions from:",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                        
+                        IconButton(
+                            onClick = { viewModel.isGuidanceMinimized = true },
+                            modifier = Modifier.size(24.dp)
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(width = 32.dp, height = 4.dp)
-                                    .clip(RoundedCornerShape(2.dp))
-                                    .background(Color.LightGray)
+                            Icon(
+                                imageVector = Icons.Default.Remove,
+                                contentDescription = "Minimize",
+                                tint = Color.Gray,
+                                modifier = Modifier.size(20.dp)
                             )
                         }
-
-                        StallBottomSheetContent(
-                            stallName = viewModel.selectedStallName ?: "",
-                            stallId = viewModel.displayStallId ?: "",
-                            foods = viewModel.stallFoods,
-                            onDismiss = { viewModel.clearSelection() },
-                            modifier = Modifier.weight(1f),
-                            stallImages = viewModel.selectedStallImages,
-                            progressProvider = sheetProgressProvider,
-                            isKept = viewModel.isCurrentStallKept,
-                            onToggleKeep = { viewModel.toggleKeepStall(viewModel.selectedStallId ?: "") }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = viewModel.guidanceText ?: "",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(12.dp)
                         )
                     }
                 }
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun BottomSheetLayer(
+    viewModel: MainViewModel,
+    anchoredDraggableState: AnchoredDraggableState<SheetStage>,
+    flingBehavior: androidx.compose.foundation.gestures.FlingBehavior
+) {
+    val density = LocalDensity.current
+    val fullOffset = with(density) { 40.dp.toPx() }
+
+    val nestedScrollConnection = remember(anchoredDraggableState, fullOffset, flingBehavior) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                val delta = available.y
+                return if (delta < 0 && source == NestedScrollSource.UserInput && 
+                    anchoredDraggableState.requireOffset() > fullOffset) {
+                    val consumed = anchoredDraggableState.dispatchRawDelta(delta)
+                    Offset(x = 0f, y = consumed)
+                } else Offset.Zero
+            }
+
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                val delta = available.y
+                return if (delta > 0 && source == NestedScrollSource.UserInput) {
+                    val dragConsumed = anchoredDraggableState.dispatchRawDelta(delta)
+                    Offset(x = 0f, y = dragConsumed)
+                } else Offset.Zero
+            }
+
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                val toFling = available.y
+                return if (toFling < 0 && anchoredDraggableState.requireOffset() > fullOffset) {
+                    val scrollScope = object : androidx.compose.foundation.gestures.ScrollScope {
+                        override fun scrollBy(pixels: Float): Float = anchoredDraggableState.dispatchRawDelta(pixels)
+                    }
+                    with(flingBehavior) { scrollScope.performFling(toFling) }
+                    available
+                } else Velocity.Zero
+            }
+
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                val toFling = available.y
+                if (toFling > 0) {
+                    val scrollScope = object : androidx.compose.foundation.gestures.ScrollScope {
+                        override fun scrollBy(pixels: Float): Float = anchoredDraggableState.dispatchRawDelta(pixels)
+                    }
+                    with(flingBehavior) { scrollScope.performFling(toFling) }
+                    return available
+                }
+                return Velocity.Zero
+            }
+        }
+    }
+
+    val sheetProgressProvider = remember(anchoredDraggableState) {
+        {
+            val anchors = anchoredDraggableState.anchors
+            val min = anchors.positionOf(SheetStage.Minimized)
+            val full = anchors.positionOf(SheetStage.Full)
+            val offset = try { anchoredDraggableState.requireOffset() } catch (_: Exception) { min }
+            val totalRange = min - full
+            if (totalRange > 0) ((min - offset) / totalRange).coerceIn(0f, 1f) else 0f
+        }
+    }
+
+    Surface(
+        modifier = Modifier
+            .graphicsLayer { translationY = anchoredDraggableState.requireOffset() }
+            .fillMaxSize()
+            .anchoredDraggable(
+                state = anchoredDraggableState,
+                orientation = Orientation.Vertical,
+                flingBehavior = flingBehavior
+            )
+            .nestedScroll(nestedScrollConnection),
+        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+        color = Color.White,
+        shadowElevation = 16.dp
+    ) {
+        Column {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(width = 32.dp, height = 4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(Color.LightGray)
+                )
+            }
+
+            StallBottomSheetContent(
+                stallName = viewModel.selectedStallName ?: "",
+                stallId = viewModel.displayStallId ?: "",
+                foods = viewModel.stallFoods,
+                onDismiss = { viewModel.clearSelection() },
+                modifier = Modifier.weight(1f),
+                stallImages = viewModel.selectedStallImages,
+                progressProvider = sheetProgressProvider,
+                isKept = viewModel.isCurrentStallKept,
+                onToggleKeep = { viewModel.toggleKeepStall(viewModel.selectedStallId ?: "") }
+            )
         }
     }
 }
@@ -664,7 +624,6 @@ fun MainScreenResultsPreview() {
         }
     )
     
-    // Force results to show for preview
     LaunchedEffect(Unit) {
         viewModel.onSearchQueryChange("Burger")
         viewModel.performManualSearch()

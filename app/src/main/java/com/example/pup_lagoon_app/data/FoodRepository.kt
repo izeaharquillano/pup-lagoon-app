@@ -306,22 +306,20 @@ class FoodRepository(private val context: Context) {
         return when {
             gateName.contains("Gate 1") -> {
                 // Gate 1 is on the East. Stalls are West.
-                // If stall is "up" (smaller Y), it's North-ish.
                 val isNorth = end.pixelY < 1360
-                val turn = if (isNorth) "turn right (North)" else "turn left (South)"
+                val turn = if (isNorth) "turn right" else "turn left"
                 "From $gateName, enter and $turn along the path to reach the stall."
             }
             gateName.contains("Gate 2") -> {
                 // Gate 2 is South-ish. Stalls are North-ish.
-                // User wants: head up then hard right (North).
                 val isNorth = end.pixelX > 1636
-                val turn = if (isNorth) "turn hard right (North)" else "turn left (West)"
+                val turn = if (isNorth) "turn hard right" else "turn left"
                 "From $gateName, head forward then $turn towards the lagoon."
             }
             gateName.contains("Gate 3") -> {
                 // Gate 3 is West-ish. Stalls are East-ish.
                 val isNorth = end.pixelY < 1214
-                val turn = if (isNorth) "turn left (North)" else "turn right (South)"
+                val turn = if (isNorth) "turn right" else "turn left"
                 "From $gateName, enter and $turn to find the stall near the building."
             }
             else -> "From $gateName, follow the path to the stall location."
