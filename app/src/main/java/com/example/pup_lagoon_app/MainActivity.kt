@@ -63,6 +63,7 @@ import com.example.pup_lagoon_app.ui.theme.PuplagoonappTheme
 import com.example.pup_lagoon_app.ui.utils.scrollbar
 import com.example.pup_lagoon_app.viewmodel.MainViewModel
 import kotlinx.coroutines.CoroutineScope
+import com.example.pup_lagoon_app.ui.components.OnboardingScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -70,7 +71,22 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             PuplagoonappTheme {
-                MainScreen()
+                val context = LocalContext.current
+                val repository = remember { FoodRepository(context) }
+                val viewModel: MainViewModel = viewModel(
+                    factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                        @Suppress("UNCHECKED_CAST")
+                        override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                            return MainViewModel(repository) as T
+                        }
+                    }
+                )
+
+                if (viewModel.showOnboarding) {
+                    OnboardingScreen(onComplete = { viewModel.completeOnboarding() })
+                } else {
+                    MainScreen(viewModel)
+                }
             }
         }
     }
@@ -80,18 +96,7 @@ enum class SheetStage { Minimized, Halfway, Full }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(viewModelOverride: MainViewModel? = null) {
-    val context = LocalContext.current
-    val repository = remember { FoodRepository(context) }
-    val viewModel: MainViewModel = viewModelOverride ?: viewModel(
-        factory = object : androidx.lifecycle.ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                return MainViewModel(repository) as T
-            }
-        }
-    )
-
+fun MainScreen(viewModel: MainViewModel) {
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
 
@@ -638,7 +643,7 @@ fun MainScreenResultsPreview() {
     }
 
     PuplagoonappTheme {
-        MainScreen(viewModelOverride = viewModel)
+        MainScreen(viewModel = viewModel)
     }
 }
 
@@ -662,7 +667,7 @@ fun GuidanceMinimizedPreview() {
     }
 
     PuplagoonappTheme {
-        MainScreen(viewModelOverride = viewModel)
+        MainScreen(viewModel = viewModel)
     }
 }
 
@@ -674,7 +679,17 @@ fun GuidanceMinimizedPreview() {
 )
 @Composable
 fun MainScreenPreview() {
+    val context = LocalContext.current
+    val repository = remember { FoodRepository(context) }
+    val viewModel: MainViewModel = viewModel(
+        factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return MainViewModel(repository) as T
+            }
+        }
+    )
     PuplagoonappTheme {
-        MainScreen()
+        MainScreen(viewModel = viewModel)
     }
 }

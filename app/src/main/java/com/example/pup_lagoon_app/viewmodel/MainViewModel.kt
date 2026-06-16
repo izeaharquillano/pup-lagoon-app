@@ -98,6 +98,19 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
 
     var hasInteractedWithSheet by mutableStateOf(false)
 
+    var showOnboarding by mutableStateOf(false)
+        private set
+
+    init {
+        val sharedPrefs = repository.getSharedPreferences()
+        showOnboarding = !sharedPrefs.getBoolean("onboarding_completed", false)
+    }
+
+    fun completeOnboarding() {
+        showOnboarding = false
+        repository.getSharedPreferences().edit().putBoolean("onboarding_completed", true).apply()
+    }
+
     var keptStallIds by mutableStateOf(setOf<String>())
         private set
 

@@ -338,4 +338,8 @@ class FoodRepository(private val context: Context) {
             emptyList()
         }
     }
+
+    fun getSharedPreferences(): android.content.SharedPreferences {
+        return context.getSharedPreferences("pup_lagoon_prefs", Context.MODE_PRIVATE)
+    }
 }
