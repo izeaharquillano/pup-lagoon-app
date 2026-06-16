@@ -219,6 +219,10 @@ class FoodRepository(private val context: Context) {
         return stallLocations[stallId]
     }
 
+    fun getAllStallLocations(): List<StallLocation> {
+        return stallLocations.values.toList()
+    }
+
     fun getMapLabels(): List<MapLabel> {
         return mapLabels
     }

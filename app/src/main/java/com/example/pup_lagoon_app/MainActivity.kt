@@ -64,6 +64,7 @@ import com.example.pup_lagoon_app.ui.utils.scrollbar
 import com.example.pup_lagoon_app.viewmodel.MainViewModel
 import kotlinx.coroutines.CoroutineScope
 import com.example.pup_lagoon_app.ui.components.OnboardingScreen
+import com.example.pup_lagoon_app.ui.components.FeatureTutorial
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -85,7 +86,17 @@ class MainActivity : ComponentActivity() {
                 if (viewModel.showOnboarding) {
                     OnboardingScreen(onComplete = { viewModel.completeOnboarding() })
                 } else {
-                    MainScreen(viewModel)
+                    Box {
+                        MainScreen(viewModel)
+                        
+                        if (viewModel.showTutorial) {
+                            FeatureTutorial(
+                                step = viewModel.tutorialStep,
+                                onNext = { viewModel.nextTutorialStep() },
+                                onSkip = { viewModel.completeTutorial() }
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -226,6 +237,7 @@ private fun MapLayer(
         mapLabels = viewModel.mapLabels,
         navigationPath = viewModel.navigationPath,
         selectedGateId = viewModel.selectedGateId,
+        allStallLocations = viewModel.allStallLocations,
         onPinClick = { stallId ->
             viewModel.selectStallById(stallId)
         },

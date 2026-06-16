@@ -101,14 +101,39 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
     var showOnboarding by mutableStateOf(false)
         private set
 
+    var showTutorial by mutableStateOf(false)
+        private set
+
+    var tutorialStep by mutableStateOf(0)
+        private set
+
     init {
         val sharedPrefs = repository.getSharedPreferences()
         showOnboarding = !sharedPrefs.getBoolean("onboarding_completed", false)
+        showTutorial = !sharedPrefs.getBoolean("tutorial_completed", false) && !showOnboarding
     }
 
     fun completeOnboarding() {
         showOnboarding = false
         repository.getSharedPreferences().edit().putBoolean("onboarding_completed", true).apply()
+        // If tutorial is not completed, show it after onboarding
+        val sharedPrefs = repository.getSharedPreferences()
+        if (!sharedPrefs.getBoolean("tutorial_completed", false)) {
+            showTutorial = true
+        }
+    }
+
+    fun nextTutorialStep() {
+        if (tutorialStep < 3) {
+            tutorialStep++
+        } else {
+            completeTutorial()
+        }
+    }
+
+    fun completeTutorial() {
+        showTutorial = false
+        repository.getSharedPreferences().edit().putBoolean("tutorial_completed", true).apply()
     }
 
     var keptStallIds by mutableStateOf(setOf<String>())
@@ -129,6 +154,9 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
             repository.getStallLocation(stallId)?.toOffset() ?: Offset.Zero
         }.filter { it.value != Offset.Zero }
     }
+
+    val allStallLocations: Map<String, Offset> = repository.getAllStallLocations()
+        .associate { it.stallId to it.toOffset() }
 
     val stallFoods: List<MergedRecords> by derivedStateOf {
         val stallId = selectedStallId ?: return@derivedStateOf emptyList<MergedRecords>()

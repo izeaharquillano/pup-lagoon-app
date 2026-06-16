@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pup_lagoon_app.data.LabelType
 import com.example.pup_lagoon_app.data.MapLabel
+import com.example.pup_lagoon_app.ui.theme.Maroon
 
 @Composable
 fun ZoomableBox(
@@ -73,6 +74,7 @@ fun ZoomableBox(
     onLandmarkClick: ((String) -> Unit)? = null,
     onClick: (() -> Unit)? = null,
     onInteraction: (() -> Unit)? = null,
+    allStallLocations: Map<String, Offset> = emptyMap(),
     content: @Composable () -> Unit,
 ) {
     var scale by remember { mutableFloatStateOf(initialScale) }
@@ -254,6 +256,47 @@ fun ZoomableBox(
                                     )
                                 )
                             )
+                        }
+                    }
+                }
+
+                // Render All Stall Icons (Small circles, clickable at higher zoom)
+                if (contentFullSize != null && currentScale > 2.5f) {
+                    val fullWidth = contentFullSize.width.toFloat()
+                    val fullHeight = contentFullSize.height.toFloat()
+
+                    allStallLocations.forEach { (id, location) ->
+                        // Only show if NOT currently selected or kept (to avoid overlap with pins)
+                        if (id !in selectedStallIds && id !in keptPins.keys) {
+                            val iconX = (location.x / fullWidth) * baseWidth * density
+                            val iconY = (location.y / fullHeight) * baseHeight * density
+
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .graphicsLayer {
+                                        scaleX = 1f / currentScale
+                                        scaleY = 1f / currentScale
+                                        translationX = iconX - 12.dp.toPx()
+                                        translationY = iconY - 12.dp.toPx()
+                                    }
+                                    .size(24.dp)
+                                    .background(Maroon.copy(alpha = 0.8f), CircleShape)
+                                    .pointerInput(id) {
+                                        detectTapGestures {
+                                            onPinClick?.invoke(id)
+                                        }
+                                    }
+                            ) {
+                                Text(
+                                    text = id.trimStart('0'),
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = Color.White,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                )
+                            }
                         }
                     }
                 }
