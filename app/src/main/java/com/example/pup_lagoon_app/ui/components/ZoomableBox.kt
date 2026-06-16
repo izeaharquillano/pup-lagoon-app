@@ -85,6 +85,7 @@ fun ZoomableBox(
     onClick: (() -> Unit)? = null,
     onInteraction: (() -> Unit)? = null,
     allStallLocations: Map<String, Offset> = emptyMap(),
+    isLoading: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -172,57 +173,62 @@ fun ZoomableBox(
             Box(
                 modifier = Modifier
                     .requiredSize(width = baseWidth.dp, height = baseHeight.dp)
-                    .pointerInput(Unit) {
-                        detectTapGestures(
-                            onTap = { onClick?.invoke() }
-                        )
+                    .pointerInput(isLoading) {
+                        if (!isLoading) {
+                            detectTapGestures(
+                                onTap = { onClick?.invoke() }
+                            )
+                        }
                     }
-                    .pointerInput(Unit) {
-                        awaitEachGesture {
-                            awaitFirstDown()
-                            onInteraction?.invoke()
-                            do {
-                                val event = awaitPointerEvent()
-                                val zoom = event.calculateZoom()
-                                val pan = event.calculatePan()
-                                val centroid = event.calculateCentroid()
+                    .pointerInput(isLoading) {
+                        if (!isLoading) {
+                            awaitEachGesture {
+                                awaitFirstDown()
+                                onInteraction?.invoke()
+                                do {
+                                    val event = awaitPointerEvent()
+                                    val zoom = event.calculateZoom()
+                                    val pan = event.calculatePan()
+                                    val centroid = event.calculateCentroid()
 
-                                if (zoom != 1f || pan != Offset.Zero) {
-                                    val oldScale = scaleAnimatable.value
-                                    val newScale = (oldScale * zoom).coerceIn(minScale, maxScale)
-                                    
-                                    val baseWidthPx = baseWidth * density
-                                    val baseHeightPx = baseHeight * density
-                                    
-                                    val relativeCentroid = Offset(
-                                        centroid.x - baseWidthPx / 2f,
-                                        centroid.y - baseHeightPx / 2f
-                                    )
+                                    if (zoom != 1f || pan != Offset.Zero) {
+                                        val oldScale = scaleAnimatable.value
+                                        val newScale = (oldScale * zoom).coerceIn(minScale, maxScale)
+                                        
+                                        val baseWidthPx = baseWidth * density
+                                        val baseHeightPx = baseHeight * density
+                                        
+                                        val relativeCentroid = Offset(
+                                            centroid.x - baseWidthPx / 2f,
+                                            centroid.y - baseHeightPx / 2f
+                                        )
 
-                                    val currentOffset = offsetAnimatable.value
-                                    val newOffset = (currentOffset + relativeCentroid / oldScale) - 
-                                                   (relativeCentroid / newScale + pan / oldScale)
+                                        val currentOffset = offsetAnimatable.value
+                                        val newOffset = (currentOffset + relativeCentroid / oldScale) - 
+                                                    (relativeCentroid / newScale + pan / oldScale)
 
-                                    val containerWidthPx = containerWidth * density
-                                    val containerHeightPx = containerHeight * density
+                                        val containerWidthPx = containerWidth * density
+                                        val containerHeightPx = containerHeight * density
 
-                                    val maxX = (baseWidthPx * newScale - containerWidthPx).coerceAtLeast(0f) / (2f * newScale)
-                                    val maxY = (baseHeightPx * newScale - containerHeightPx).coerceAtLeast(0f) / (2f * newScale)
+                                        val currentScaleValue = scaleAnimatable.value
+                                        val maxX = (baseWidthPx * currentScaleValue - containerWidthPx).coerceAtLeast(0f) / (2f * currentScaleValue)
+                                        val maxY = (baseHeightPx * currentScaleValue - containerHeightPx).coerceAtLeast(0f) / (2f * currentScaleValue)
 
-                                    val finalOffset = Offset(
-                                        newOffset.x.coerceIn(-maxX, maxX),
-                                        newOffset.y.coerceIn(-maxY, maxY)
-                                    )
+                                        val finalOffset = Offset(
+                                            newOffset.x.coerceIn(-maxX, maxX),
+                                            newOffset.y.coerceIn(-maxY, maxY)
+                                        )
 
-                                    // Update animatables using the composition's scope
-                                    // but launch it as UNDISPATCHED to handle the update immediately
-                                    // without the 1-frame/dispatcher delay
-                                    scope.launch(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
-                                        scaleAnimatable.snapTo(newScale)
-                                        offsetAnimatable.snapTo(finalOffset)
+                                        // Update animatables using the composition's scope
+                                        // but launch it as UNDISPATCHED to handle the update immediately
+                                        // without the 1-frame/dispatcher delay
+                                        scope.launch(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
+                                            scaleAnimatable.snapTo(newScale)
+                                            offsetAnimatable.snapTo(finalOffset)
+                                        }
                                     }
-                                }
-                            } while (event.changes.any { it.pressed })
+                                } while (event.changes.any { it.pressed })
+                            }
                         }
                     }
                     .graphicsLayer {

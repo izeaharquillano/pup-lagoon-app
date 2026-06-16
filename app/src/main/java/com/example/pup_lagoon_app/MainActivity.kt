@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.runtime.*
+import com.example.pup_lagoon_app.ui.components.LoadingOverlay
 import com.example.pup_lagoon_app.ui.components.StallBottomSheetContent
 import androidx.compose.animation.*
 import androidx.compose.animation.core.Spring
@@ -224,50 +225,61 @@ private fun MapLayer(
     val mapPainter = painterResource(id = R.drawable.university_map)
     val mapSize = mapPainter.intrinsicSize
     
-    ZoomableBox(
-        modifier = Modifier.fillMaxSize(),
-        contentAspectRatio = if (mapSize.width > 0) mapSize.width / mapSize.height else 1f,
-        initialScale = 1.7f,
-        initialCenterPixel = Offset(1787f, 1272f),
-        targetCenterPixel = viewModel.selectedStallLocation,
-        selectedStallIds = viewModel.selectedStallIds,
-        selectedStallLocations = viewModel.selectedStallLocations,
-        contentFullSize = IntSize(mapSize.width.toInt(), mapSize.height.toInt()),
-        keptPins = viewModel.keptStallLocations,
-        mapLabels = viewModel.mapLabels,
-        navigationPath = viewModel.navigationPath,
-        selectedGateId = viewModel.selectedGateId,
-        allStallLocations = viewModel.allStallLocations,
-        onPinClick = { stallId ->
-            viewModel.selectStallById(stallId)
-        },
-        onLandmarkClick = { landmarkId ->
-            if (viewModel.selectedStallId != null) {
-                viewModel.updateRoute(landmarkId)
-            }
-        },
-        onInteraction = {
-            if (anchoredDraggableState.currentValue != SheetStage.Minimized) {
-                scope.launch {
-                    anchoredDraggableState.animateTo(SheetStage.Minimized)
+    Box(modifier = Modifier.fillMaxSize()) {
+        ZoomableBox(
+            modifier = Modifier.fillMaxSize(),
+            contentAspectRatio = if (mapSize.width > 0) mapSize.width / mapSize.height else 1f,
+            initialScale = 1.7f,
+            initialCenterPixel = Offset(1787f, 1272f),
+            targetCenterPixel = viewModel.selectedStallLocation,
+            selectedStallIds = viewModel.selectedStallIds,
+            selectedStallLocations = viewModel.selectedStallLocations,
+            contentFullSize = IntSize(mapSize.width.toInt(), mapSize.height.toInt()),
+            keptPins = viewModel.keptStallLocations,
+            mapLabels = viewModel.mapLabels,
+            navigationPath = viewModel.navigationPath,
+            selectedGateId = viewModel.selectedGateId,
+            allStallLocations = viewModel.allStallLocations,
+            isLoading = viewModel.isMapLoading,
+            onPinClick = { stallId ->
+                viewModel.selectStallById(stallId)
+            },
+            onLandmarkClick = { landmarkId ->
+                if (viewModel.selectedStallId != null) {
+                    viewModel.updateRoute(landmarkId)
+                }
+            },
+            onInteraction = {
+                if (anchoredDraggableState.currentValue != SheetStage.Minimized) {
+                    scope.launch {
+                        anchoredDraggableState.animateTo(SheetStage.Minimized)
+                    }
+                }
+            },
+            onClick = {
+                if (anchoredDraggableState.currentValue != SheetStage.Minimized) {
+                    scope.launch {
+                        anchoredDraggableState.animateTo(SheetStage.Minimized)
+                    }
                 }
             }
-        },
-        onClick = {
-            if (anchoredDraggableState.currentValue != SheetStage.Minimized) {
-                scope.launch {
-                    anchoredDraggableState.animateTo(SheetStage.Minimized)
-                }
+        ) {
+            Image(
+                painter = mapPainter,
+                contentDescription = "University Map",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Fit,
+                alpha = 1.0f
+            )
+
+            // Trigger onMapReady when the image is rendered
+            LaunchedEffect(Unit) {
+                viewModel.onMapReady()
             }
         }
-    ) {
-        Image(
-            painter = mapPainter,
-            contentDescription = "University Map",
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Fit,
-            alpha = 1.0f
-        )
+
+        // Place LoadingOverlay OUTSIDE ZoomableBox so it's not affected by pans/zooms
+        LoadingOverlay(isLoading = viewModel.isMapLoading)
     }
 }
 
