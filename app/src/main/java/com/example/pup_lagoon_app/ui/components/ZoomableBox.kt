@@ -30,6 +30,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.DoorSliding
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.Icon
@@ -637,35 +638,31 @@ fun ZoomableBox(
                                                 )
                                             }
 
-                                            Box(contentAlignment = Alignment.Center) {
-                                                // White circle to fill the "hole" in the pin
-                                                Box(
-                                                    modifier = Modifier
-                                                        .size(9.dp)
-                                                        .graphicsLayer {
-                                                            scaleX = iconScale
-                                                            scaleY = iconScale
-                                                            transformOrigin = TransformOrigin(0.5f, 1f)
-                                                            // Head center is 18dp up from tip. Scaling from the tip (1f) keeps this distance proportional.
-                                                            translationY = -18.dp.toPx()
-                                                        }
-                                                        .background(Color.White, CircleShape)
-                                                )
-                                                Icon(
-                                                    imageVector = Icons.Default.LocationOn,
-                                                    contentDescription = null,
-                                                    tint = if (isSelected) Color.Red else Color.Gray.copy(alpha = 0.8f),
-                                                    modifier = Modifier
-                                                        .size(24.dp)
-                                                        .graphicsLayer { 
-                                                            scaleX = iconScale
-                                                            scaleY = iconScale
-                                                            transformOrigin = TransformOrigin(0.5f, 1f)
-                                                            // Move the icon center up by 12dp so the bottom tip is at the layout center (coordinate)
-                                                            translationY = -12.dp.toPx()
-                                                        }
-                                                )
-                                            }
+                                        Box(contentAlignment = Alignment.Center) {
+                                            // White square background for the icon
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(16.dp)
+                                                    .graphicsLayer {
+                                                        scaleX = iconScale
+                                                        scaleY = iconScale
+                                                        transformOrigin = TransformOrigin(0.5f, 0.5f)
+                                                    }
+                                                    .background(Color.White, RoundedCornerShape(4.dp))
+                                            )
+                                            Icon(
+                                                imageVector = Icons.Default.DoorSliding,
+                                                contentDescription = null,
+                                                tint = if (isSelected) Color.Red else Color.Gray.copy(alpha = 0.8f),
+                                                modifier = Modifier
+                                                    .size(24.dp)
+                                                    .graphicsLayer { 
+                                                        scaleX = iconScale
+                                                        scaleY = iconScale
+                                                        transformOrigin = TransformOrigin(0.5f, 0.5f)
+                                                    }
+                                            )
+                                        }
                                         }
                                     }
                                 }

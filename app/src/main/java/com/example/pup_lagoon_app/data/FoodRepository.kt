@@ -323,7 +323,7 @@ class FoodRepository(private val context: Context) {
             gateName.contains("Gate 3") -> {
                 // Gate 3 is West-ish. Stalls are East-ish.
                 val isNorth = end.pixelY < 1214
-                val turn = if (isNorth) "turn right" else "turn left"
+                val turn = if (isNorth) "turn left" else "turn right"
                 "From $gateName, enter and $turn to find the stall near the building."
             }
             else -> "From $gateName, follow the path to the stall location."
