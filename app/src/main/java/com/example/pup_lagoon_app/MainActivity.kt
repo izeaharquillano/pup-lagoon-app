@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -138,6 +137,7 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
     val repository = remember { FoodRepository(context) }
     val viewModel: MainViewModel = viewModelOverride ?: viewModel(
         factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
                 return MainViewModel(repository) as T
             }
@@ -208,7 +208,7 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
             // Lambda provider for progress to avoid recomposition
             val sheetProgressProvider = remember(anchoredDraggableState, minimizedOffset, fullOffset) {
                 {
-                    val offset = try { anchoredDraggableState.requireOffset() } catch (e: Exception) { minimizedOffset }
+                    val offset = try { anchoredDraggableState.requireOffset() } catch (_: Exception) { minimizedOffset }
                     val totalRange = minimizedOffset - fullOffset
                     if (totalRange > 0) {
                         ((minimizedOffset - offset) / totalRange).coerceIn(0f, 1f)
@@ -450,7 +450,9 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                     if (viewModel.isGuidanceMinimized) {
                         // Minimized Circle Icon
                         Box(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(end = 6.dp),
                             contentAlignment = Alignment.CenterEnd
                         ) {
                             IconButton(
@@ -655,6 +657,7 @@ fun MainScreenResultsPreview() {
     val repository = remember { FoodRepository(context) }
     val viewModel: MainViewModel = viewModel(
         factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
                 return MainViewModel(repository) as T
             }

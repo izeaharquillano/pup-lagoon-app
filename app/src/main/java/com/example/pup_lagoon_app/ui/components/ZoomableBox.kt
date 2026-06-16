@@ -10,10 +10,13 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -33,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
@@ -238,10 +242,9 @@ fun ZoomableBox(
                                 val dy = endPoint.y - startPoint.y
                                 val length = kotlin.math.sqrt(dx * dx + dy * dy)
                                 
-                                // Adjust offsets to prevent clipping but stay close to the targets
-                                // Smaller offset for Gate (start of path) and Stall (end of path)
-                                val startOffset = if (i == 0) (25.dp.toPx() / currentScale) else 0f
-                                val endOffset = if (i == pathPoints.size - 2) (28.dp.toPx() / currentScale) else 0f
+                                // Adjust offsets: Prevent bleeding below pin tip with a small start offset
+                                val startOffset = (2.dp.toPx() / currentScale)
+                                val endOffset = 0f
                                 
                                 if (length > (startOffset + endOffset)) {
                                     val ux = dx / length
@@ -406,27 +409,58 @@ fun ZoomableBox(
                                                 }
                                             }
                                     ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Place,
-                                            contentDescription = null,
-                                            tint = if (isSelected) Color.Red else Color.Gray.copy(alpha = 0.6f),
+                                        // Text ABOVE icon with dynamic spacing
+                                        Surface(
+                                            color = Color.White.copy(alpha = 0.8f),
+                                            shape = RoundedCornerShape(4.dp),
                                             modifier = Modifier
-                                                .size(16.dp)
-                                                .graphicsLayer { 
-                                                    scaleX = iconScale
-                                                    scaleY = iconScale
-                                                    translationY = -12.dp.toPx() * iconScale
+                                                .graphicsLayer {
+                                                    // Move text above the center (coordinate)
+                                                    // Base: -24dp (icon height) - 8dp (padding) = -32dp
+                                                    // Selection: Shift up by 12dp to clear expanded icon (36dp + 8dp = 44dp)
+                                                    translationY = if (isSelected) -44.dp.toPx() else -32.dp.toPx()
                                                 }
-                                        )
-                                        Text(
-                                            text = label.text,
-                                            style = MaterialTheme.typography.labelSmall.copy(
-                                                fontSize = if (isSelected) 10.sp else 9.sp,
-                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold
-                                            ),
-                                            color = if (isSelected) Color.Red else Color.Gray,
-                                            modifier = Modifier.padding(horizontal = 2.dp)
-                                        )
+                                        ) {
+                                            Text(
+                                                text = label.text,
+                                                style = MaterialTheme.typography.labelSmall.copy(
+                                                    fontSize = if (isSelected) 10.sp else 9.sp,
+                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold
+                                                ),
+                                                color = if (isSelected) Color.Red else Color.Gray,
+                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                            )
+                                        }
+
+                                        Box(contentAlignment = Alignment.Center) {
+                                            // White circle to fill the "hole" in the pin
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(9.dp)
+                                                    .graphicsLayer {
+                                                        scaleX = iconScale
+                                                        scaleY = iconScale
+                                                        transformOrigin = TransformOrigin(0.5f, 1f)
+                                                        // Head center is 18dp up from tip. Scaling from the tip (1f) keeps this distance proportional.
+                                                        translationY = -18.dp.toPx()
+                                                    }
+                                                    .background(Color.White, CircleShape)
+                                            )
+                                            Icon(
+                                                imageVector = Icons.Default.LocationOn,
+                                                contentDescription = null,
+                                                tint = if (isSelected) Color.Red else Color.Gray.copy(alpha = 0.8f),
+                                                modifier = Modifier
+                                                    .size(24.dp)
+                                                    .graphicsLayer { 
+                                                        scaleX = iconScale
+                                                        scaleY = iconScale
+                                                        transformOrigin = TransformOrigin(0.5f, 1f)
+                                                        // Move the icon center up by 12dp so the bottom tip is at the layout center (coordinate)
+                                                        translationY = -12.dp.toPx()
+                                                    }
+                                            )
+                                        }
                                     }
                                 }
                             }

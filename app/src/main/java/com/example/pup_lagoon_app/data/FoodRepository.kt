@@ -242,11 +242,12 @@ class FoodRepository(private val context: Context) {
                 path.add(Offset(2139f, 1360f)) // Step into the walkway
             }
             from.text.contains("Gate 2") -> {
-                path.add(Offset(1636f, 1750f)) // Head slightly into the campus entrance
-                path.add(Offset(1716f, 1750f)) // Turn right along the walkway
+                path.add(Offset(1636f, 1800f)) // Step exactly vertical from pin
+                path.add(Offset(1716f, 1768f)) // Join lagoon walkway
             }
             from.text.contains("Gate 3") -> {
-                path.add(Offset(1400f, 1214f)) // Step into the main path
+                path.add(Offset(1299f, 1260f)) // Step into the entrance
+                path.add(Offset(1400f, 1260f)) // Step into the walkway
             }
         }
         
