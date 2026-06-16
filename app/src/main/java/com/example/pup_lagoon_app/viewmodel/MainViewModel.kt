@@ -277,6 +277,14 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
     }
 
     fun updateRoute(gateId: String) {
+        if (selectedGateId == gateId) {
+            // Toggle OFF: reset to "Please select a gate" mode
+            selectedGateId = null
+            navigationPath = emptyList()
+            guidanceText = "Tap a Gate (Gate 1, 2, or 3) on the map for directions."
+            return
+        }
+
         val gate = mapLabels.find { it.id == gateId } ?: return
         val stallId = selectedStallId ?: return
         val location = repository.getStallLocation(stallId) ?: return

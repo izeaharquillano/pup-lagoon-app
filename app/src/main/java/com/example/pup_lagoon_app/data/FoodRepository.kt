@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.ui.geometry.Offset
 import java.io.BufferedReader
 import java.io.InputStreamReader
+import java.util.Locale
 
 class FoodRepository(private val context: Context) {
     private val nameTree = BTree<String, FoodRecord>(5)
@@ -235,24 +236,69 @@ class FoodRepository(private val context: Context) {
     fun calculatePath(from: MapLabel, to: StallLocation): List<Offset> {
         val path = mutableListOf<Offset>()
         path.add(Offset(from.pixelX, from.pixelY))
+
+        // Full logical sequence of stalls around the lagoon in physical order
+        // Note: 15 and 16 are swapped because physically 15 comes after 17 and before 16.
+        val fullLoop = listOf(
+            "27", "26", "25", "24", "23", "22", "21", "20", "19", "18", "17", "15", "16", "14", "13", 
+            "12", "11", "10", "09", "08", "07", "06", "05", "04", "03", "02", "01"
+        )
+        val destId = to.stallId
         
-        // Add realistic exit waypoints for gates to prevent cutting through grass/walls
+        fun getStallOffset(id: String) = stallLocations[id]?.toOffset()
+
         when {
-            from.text.contains("Gate 1") -> {
-                path.add(Offset(2139f, 1360f)) // Step into the walkway
+            from.text.contains("Gate 3") -> {
+                // Gate 3 (West) connects to the walkway hub near the top of the West side
+                path.add(Offset(1419f, 1214f)) 
+                
+                // Join the sequence at 27 and follow it step-by-step
+                val idx = fullLoop.indexOf(destId)
+                if (idx != -1) {
+                    for (i in 0..idx) {
+                        getStallOffset(fullLoop[i])?.let { path.add(it) }
+                    }
+                }
             }
             from.text.contains("Gate 2") -> {
-                path.add(Offset(1636f, 1800f)) // Step exactly vertical from pin
-                path.add(Offset(1716f, 1768f)) // Join lagoon walkway
+                // Gate 2 (South) connects to the South walkway hub
+                path.add(Offset(1636f, 1768f))
+                
+                // This hub is near Stall 21.
+                // Determine direction: towards 27 (higher IDs) or 01 (lower IDs)
+                if (destId.toInt() >= 21) {
+                    // Go towards 27 (backwards in our loop)
+                    val seq = (21..27).map { String.format(Locale.US, "%02d", it) }
+                    val idx = seq.indexOf(destId)
+                    for (i in 0..idx) { getStallOffset(seq[i])?.let { path.add(it) } }
+                } else {
+                    // Go towards 01 (forwards in our loop)
+                    val startIdx = fullLoop.indexOf("21")
+                    val endIdx = fullLoop.indexOf(destId)
+                    for (i in startIdx..endIdx) { getStallOffset(fullLoop[i])?.let { path.add(it) } }
+                }
             }
-            from.text.contains("Gate 3") -> {
-                path.add(Offset(1299f, 1260f)) // Step into the entrance
-                path.add(Offset(1400f, 1260f)) // Step into the walkway
+            from.text.contains("Gate 1") -> {
+                // Gate 1 (East) connects to the East walkway hub
+                path.add(Offset(2139f, 1360f))
+                
+                // This hub is between 12 and 13.
+                if (destId.toInt() <= 12) {
+                    // Go UP towards 01
+                    val seq = (12 downTo 1).map { String.format(Locale.US, "%02d", it) }
+                    val idx = seq.indexOf(destId)
+                    for (i in 0..idx) { getStallOffset(seq[i])?.let { path.add(it) } }
+                } else {
+                    // Go DOWN towards 13, 14... 27
+                    val startIdx = fullLoop.indexOf("12")
+                    val endIdx = fullLoop.indexOf(destId)
+                    for (i in startIdx..endIdx) { getStallOffset(fullLoop[i])?.let { path.add(it) } }
+                }
             }
         }
-        
-        path.add(Offset(to.pixelX, to.pixelY))
-        return path
+
+        path.add(to.toOffset())
+        return path.distinct()
     }
 
     fun getDirectionText(start: MapLabel, end: StallLocation): String {

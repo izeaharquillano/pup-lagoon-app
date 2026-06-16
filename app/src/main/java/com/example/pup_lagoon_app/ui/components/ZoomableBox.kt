@@ -228,50 +228,32 @@ fun ZoomableBox(
                         val pathPoints = navigationPath.map { point ->
                             Offset(
                                 (point.x / fullWidth) * baseWidth * density,
-                                (point.y / fullHeight) * baseHeight * density
+                                // Offset Y upwards slightly (2dp) to meet the visual tip of the LocationOn icon
+                                (point.y / fullHeight) * baseHeight * density - (2.dp.toPx() / currentScale)
                             )
                         }
 
                         if (pathPoints.size >= 2) {
-                            for (i in 0 until pathPoints.size - 1) {
-                                val startPoint = pathPoints[i]
-                                val endPoint = pathPoints[i + 1]
-                                
-                                // Calculate unit vector for offsets to prevent clipping into pins
-                                val dx = endPoint.x - startPoint.x
-                                val dy = endPoint.y - startPoint.y
-                                val length = kotlin.math.sqrt(dx * dx + dy * dy)
-                                
-                                // Adjust offsets: Prevent bleeding below pin tip with a small start offset
-                                val startOffset = (2.dp.toPx() / currentScale)
-                                val endOffset = 0f
-                                
-                                if (length > (startOffset + endOffset)) {
-                                    val ux = dx / length
-                                    val uy = dy / length
-                                    
-                                    val adjustedStart = Offset(
-                                        startPoint.x + ux * startOffset,
-                                        startPoint.y + uy * startOffset
-                                    )
-                                    val adjustedEnd = Offset(
-                                        endPoint.x - ux * endOffset,
-                                        endPoint.y - uy * endOffset
-                                    )
-
-                                    drawLine(
-                                        color = Color.Red,
-                                        start = adjustedStart,
-                                        end = adjustedEnd,
-                                        strokeWidth = 3.dp.toPx() / currentScale,
-                                        cap = StrokeCap.Round,
-                                        pathEffect = PathEffect.dashPathEffect(
-                                            floatArrayOf(10f / currentScale, 10f / currentScale),
-                                            0f
-                                        )
-                                    )
+                            val path = androidx.compose.ui.graphics.Path().apply {
+                                moveTo(pathPoints[0].x, pathPoints[0].y)
+                                for (i in 1 until pathPoints.size) {
+                                    lineTo(pathPoints[i].x, pathPoints[i].y)
                                 }
                             }
+
+                            drawPath(
+                                path = path,
+                                color = Color.Red,
+                                style = androidx.compose.ui.graphics.drawscope.Stroke(
+                                    width = 3.dp.toPx() / currentScale,
+                                    cap = StrokeCap.Round,
+                                    join = androidx.compose.ui.graphics.StrokeJoin.Round,
+                                    pathEffect = PathEffect.dashPathEffect(
+                                        floatArrayOf(10f / currentScale, 10f / currentScale),
+                                        0f
+                                    )
+                                )
+                            )
                         }
                     }
                 }
@@ -287,12 +269,9 @@ fun ZoomableBox(
                             val pinX = (location.x / fullWidth) * baseWidth * density
                             val pinY = (location.y / fullHeight) * baseHeight * density
 
-                            Icon(
-                                imageVector = Icons.Default.LocationOn,
-                                contentDescription = "Kept Pin",
-                                tint = Color(0xFFB71C1C),
+                            Box(
+                                contentAlignment = Alignment.Center,
                                 modifier = Modifier
-                                    .size(44.dp)
                                     .graphicsLayer {
                                         transformOrigin = TransformOrigin(0.5f, 1f)
                                         scaleX = 1f / currentScale
@@ -300,12 +279,31 @@ fun ZoomableBox(
                                         translationX = pinX - 22.dp.toPx()
                                         translationY = pinY - 44.dp.toPx()
                                     }
-                                    .pointerInput(id) {
-                                        detectTapGestures {
-                                            onPinClick?.invoke(id)
+                            ) {
+                                // White filler for the head of the pin
+                                Box(
+                                    modifier = Modifier
+                                        .size(16.dp)
+                                        .graphicsLayer {
+                                            // Centering at the pin head (roughly 12dp from top of 44dp icon)
+                                            // icon center is 22dp, so shift up by 8dp (adjusted from -10dp)
+                                            translationY = -8.dp.toPx()
                                         }
-                                    }
-                            )
+                                        .background(Color.White, CircleShape)
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.LocationOn,
+                                    contentDescription = "Kept Pin",
+                                    tint = Color(0xFFB71C1C),
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .pointerInput(id) {
+                                            detectTapGestures {
+                                                onPinClick?.invoke(id)
+                                            }
+                                        }
+                                )
+                            }
                         }
                     }
                 }
@@ -319,34 +317,41 @@ fun ZoomableBox(
                         val pinX = (location.x / fullWidth) * baseWidth * density
                         val pinY = (location.y / fullHeight) * baseHeight * density
 
-                        Icon(
-                            imageVector = Icons.Default.LocationOn,
-                            contentDescription = "Selected Stall Pin",
-                            tint = Color.Red,
+                        Box(
+                            contentAlignment = Alignment.Center,
                             modifier = Modifier
-                                .background(Color.White, CircleShape)
-                                .padding(2.dp)
-                                .size(54.dp)
                                 .graphicsLayer {
-                                    // Set the origin of all transformations to the bottom-center tip
                                     transformOrigin = TransformOrigin(0.5f, 1f)
-
-                                    // INVERSE SCALING:
-                                    // This makes the pin stay the same visual size on the screen
                                     scaleX = 1f / currentScale
                                     scaleY = 1f / currentScale
-
-                                    // Position the bottom-center tip at (pinX, pinY)
-                                    // Since Box is TopStart, (0,0) is top-left.
                                     translationX = pinX - 27.dp.toPx()
                                     translationY = pinY - 54.dp.toPx()
                                 }
-                                .pointerInput(id) {
-                                    detectTapGestures {
-                                        onPinClick?.invoke(id)
+                        ) {
+                            // White filler for the head of the pin
+                            Box(
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .graphicsLayer {
+                                        // Centering at the pin head (roughly 15dp from top of 54dp icon)
+                                        // icon center is 27dp, so shift up by 10dp (adjusted from -12dp)
+                                        translationY = -10.dp.toPx()
                                     }
-                                }
-                        )
+                                    .background(Color.White, CircleShape)
+                            )
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = "Selected Stall Pin",
+                                tint = Color.Red,
+                                modifier = Modifier
+                                    .size(54.dp)
+                                    .pointerInput(id) {
+                                        detectTapGestures {
+                                            onPinClick?.invoke(id)
+                                        }
+                                    }
+                            )
+                        }
                     }
 
                     // Render Map Labels
