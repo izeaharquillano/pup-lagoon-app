@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -26,11 +27,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -40,6 +45,9 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.rememberBottomSheetScaffoldState
@@ -53,6 +61,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import com.example.pup_lagoon_app.ui.components.StallBottomSheetContent
+import androidx.compose.animation.*
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -229,8 +238,15 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                 contentFullSize = IntSize(mapSize.width.toInt(), mapSize.height.toInt()),
                 keptPins = viewModel.keptStallLocations,
                 mapLabels = viewModel.mapLabels,
+                navigationPath = viewModel.navigationPath,
+                selectedGateId = viewModel.selectedGateId,
                 onPinClick = { stallId ->
                     viewModel.selectStallById(stallId)
+                },
+                onLandmarkClick = { landmarkId ->
+                    if (viewModel.selectedStallId != null) {
+                        viewModel.updateRoute(landmarkId)
+                    }
                 },
                 onInteraction = {
                     if (anchoredDraggableState.currentValue != SheetStage.Minimized) {
@@ -421,6 +437,92 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
                                             FoodItemCard(record, onClick = { viewModel.selectResult(record) })
                                         }
                                     }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // LAYER 2.5: Floating Guidance Card
+                if (viewModel.guidanceText != null && !viewModel.showResults) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    if (viewModel.isGuidanceMinimized) {
+                        // Minimized Circle Icon
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.CenterEnd
+                        ) {
+                            IconButton(
+                                onClick = { viewModel.isGuidanceMinimized = false },
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .shadow(4.dp, CircleShape)
+                                    .background(Maroon, CircleShape)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Directions,
+                                    contentDescription = "Show directions",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    } else {
+                        // Expanded Guidance Card
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .shadow(4.dp, RoundedCornerShape(16.dp)),
+                            color = Color.White,
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Directions,
+                                        contentDescription = null,
+                                        tint = Maroon,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Directions from:",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.Black
+                                    )
+                                    Spacer(modifier = Modifier.weight(1f))
+                                    
+                                    IconButton(
+                                        onClick = { viewModel.isGuidanceMinimized = true },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Remove,
+                                            contentDescription = "Minimize",
+                                            tint = Color.Gray,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                                
+                                Spacer(modifier = Modifier.height(12.dp))
+                                
+                                Surface(
+                                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        text = viewModel.guidanceText ?: "",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.padding(12.dp)
+                                    )
                                 }
                             }
                         }

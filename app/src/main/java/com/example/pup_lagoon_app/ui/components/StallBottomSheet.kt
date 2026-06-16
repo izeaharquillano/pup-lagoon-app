@@ -21,10 +21,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.material3.Text
@@ -52,6 +56,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import com.example.pup_lagoon_app.data.MapLabel
 import com.example.pup_lagoon_app.data.MergedRecords
 import com.example.pup_lagoon_app.ui.utils.scrollbar
 
@@ -74,6 +79,7 @@ fun StallBottomSheetContent(
             .fillMaxWidth()
             .background(Color.White)
     ) {
+        // ... (Header Row remains same)
         // Stall Header - Fixed layout slots with fluid graphics layer transitions
         Row(
             modifier = Modifier
@@ -193,12 +199,6 @@ fun StallBottomSheetContent(
                 onClick = { onToggleKeep(!isKept) },
                 modifier = Modifier
                     .size(48.dp)
-                    .graphicsLayer {
-                        val p = (progressProvider() / 0.5f).coerceIn(0f, 1f)
-                        alpha = p
-                        scaleX = p
-                        scaleY = p
-                    }
             ) {
                 Icon(
                     imageVector = if (isKept) Icons.Filled.PushPin else Icons.Outlined.PushPin,

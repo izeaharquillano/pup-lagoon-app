@@ -76,6 +76,20 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
 
     var showBottomSheet by mutableStateOf(false)
 
+    var navigationPath by mutableStateOf<List<Offset>>(emptyList())
+        private set
+
+    var guidanceText by mutableStateOf<String?>(null)
+        private set
+
+    var availableGates by mutableStateOf<List<MapLabel>>(emptyList())
+        private set
+
+    var selectedGateId by mutableStateOf<String?>(null)
+        private set
+
+    var isGuidanceMinimized by mutableStateOf(false)
+
     var keptStallIds by mutableStateOf(setOf<String>())
         private set
 
@@ -201,20 +215,27 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
 
     fun selectStallById(stallId: String) {
         val isWaterStation = stallId == "14" || stallId == "16"
+        val location = repository.getStallLocation(stallId)
         
         if (isWaterStation) {
             selectedStallIds = setOf("14", "16")
             selectedStallName = "Water Refilling Station"
             displayStallId = "14, #16"
-            // Use current stall for location if not already centering
-            val location = repository.getStallLocation(stallId)
             selectedStallLocation = location?.toOffset()
         } else {
             selectedStallIds = setOf(stallId)
             selectedStallName = repository.getAllRecords().find { it.stallId == stallId }?.stallName ?: "Unknown Stall"
             displayStallId = stallId
-            val location = repository.getStallLocation(stallId)
             selectedStallLocation = location?.toOffset()
+        }
+
+        // Calculate Route Guidance
+        availableGates = mapLabels.filter { it.text.contains("Gate", ignoreCase = true) }
+        location?.let { loc ->
+            // Don't auto-calculate gate, just prompt user
+            guidanceText = "Tap a Gate (Gate 1, 2, or 3) on the map for directions."
+            navigationPath = emptyList()
+            selectedGateId = null
         }
         
         selectedStallId = stallId
@@ -239,11 +260,30 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
             selectedStallName = "Water Refilling Station"
             displayStallId = "14, #16"
             selectedStallImages = repository.getStallImages("14")
+            
+            // Navigation for Water Station
+            availableGates = mapLabels.filter { it.text.contains("Gate", ignoreCase = true) }
+            location?.let { loc ->
+                guidanceText = "Tap a Gate (Gate 1, 2, or 3) on the map for directions."
+                navigationPath = emptyList()
+                selectedGateId = null
+            }
+
             showResults = false
             showBottomSheet = true
         } else {
             selectStallById(record.stallId)
         }
+    }
+
+    fun updateRoute(gateId: String) {
+        val gate = mapLabels.find { it.id == gateId } ?: return
+        val stallId = selectedStallId ?: return
+        val location = repository.getStallLocation(stallId) ?: return
+        
+        selectedGateId = gateId
+        navigationPath = repository.calculatePath(gate, location)
+        guidanceText = repository.getDirectionText(gate, location)
     }
 
     fun clearSelection() {
@@ -254,6 +294,11 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
         selectedStallName = null
         selectedStallImages = emptyList()
         showBottomSheet = false
+        navigationPath = emptyList()
+        guidanceText = null
+        availableGates = emptyList()
+        selectedGateId = null
+        isGuidanceMinimized = false
     }
 
     fun getAllCategories(): List<String> {

@@ -1,6 +1,7 @@
 package com.example.pup_lagoon_app.data
 
 import android.content.Context
+import androidx.compose.ui.geometry.Offset
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
@@ -219,6 +220,65 @@ class FoodRepository(private val context: Context) {
 
     fun getMapLabels(): List<MapLabel> {
         return mapLabels
+    }
+
+    fun findNearestGate(target: Offset): MapLabel? {
+        return mapLabels
+            .filter { it.type == LabelType.LANDMARK && it.text.contains("Gate", ignoreCase = true) }
+            .minByOrNull { label ->
+                val dx = label.pixelX - target.x
+                val dy = label.pixelY - target.y
+                dx * dx + dy * dy
+            }
+    }
+
+    fun calculatePath(from: MapLabel, to: StallLocation): List<Offset> {
+        val path = mutableListOf<Offset>()
+        path.add(Offset(from.pixelX, from.pixelY))
+        
+        // Add realistic exit waypoints for gates to prevent cutting through grass/walls
+        when {
+            from.text.contains("Gate 1") -> {
+                path.add(Offset(2139f, 1360f)) // Step into the walkway
+            }
+            from.text.contains("Gate 2") -> {
+                path.add(Offset(1636f, 1750f)) // Head slightly into the campus entrance
+                path.add(Offset(1716f, 1750f)) // Turn right along the walkway
+            }
+            from.text.contains("Gate 3") -> {
+                path.add(Offset(1400f, 1214f)) // Step into the main path
+            }
+        }
+        
+        path.add(Offset(to.pixelX, to.pixelY))
+        return path
+    }
+
+    fun getDirectionText(start: MapLabel, end: StallLocation): String {
+        val gateName = start.text
+        return when {
+            gateName.contains("Gate 1") -> {
+                // Gate 1 is on the East. Stalls are West.
+                // If stall is "up" (smaller Y), it's North-ish.
+                val isNorth = end.pixelY < 1360
+                val turn = if (isNorth) "turn right (North)" else "turn left (South)"
+                "From $gateName, enter and $turn along the path to reach the stall."
+            }
+            gateName.contains("Gate 2") -> {
+                // Gate 2 is South-ish. Stalls are North-ish.
+                // User wants: head up then hard right (North).
+                val isNorth = end.pixelX > 1636
+                val turn = if (isNorth) "turn hard right (North)" else "turn left (West)"
+                "From $gateName, head forward then $turn towards the lagoon."
+            }
+            gateName.contains("Gate 3") -> {
+                // Gate 3 is West-ish. Stalls are East-ish.
+                val isNorth = end.pixelY < 1214
+                val turn = if (isNorth) "turn left (North)" else "turn right (South)"
+                "From $gateName, enter and $turn to find the stall near the building."
+            }
+            else -> "From $gateName, follow the path to the stall location."
+        }
     }
 
     fun getStallImages(stallId: String): List<String> {

@@ -4,13 +4,17 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
@@ -31,6 +35,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -57,7 +63,10 @@ fun ZoomableBox(
     contentFullSize: IntSize? = null,
     keptPins: Map<String, Offset> = emptyMap(),
     mapLabels: List<MapLabel> = emptyList(),
+    navigationPath: List<Offset> = emptyList(),
+    selectedGateId: String? = null,
     onPinClick: ((String) -> Unit)? = null,
+    onLandmarkClick: ((String) -> Unit)? = null,
     onClick: (() -> Unit)? = null,
     onInteraction: (() -> Unit)? = null,
     content: @Composable () -> Unit,
@@ -206,6 +215,64 @@ fun ZoomableBox(
             ) {
                 content()
 
+                // Render Route Guidance Path
+                if (contentFullSize != null && navigationPath.isNotEmpty()) {
+                    val fullWidth = contentFullSize.width.toFloat()
+                    val fullHeight = contentFullSize.height.toFloat()
+
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        val pathPoints = navigationPath.map { point ->
+                            Offset(
+                                (point.x / fullWidth) * baseWidth * density,
+                                (point.y / fullHeight) * baseHeight * density
+                            )
+                        }
+
+                        if (pathPoints.size >= 2) {
+                            for (i in 0 until pathPoints.size - 1) {
+                                val startPoint = pathPoints[i]
+                                val endPoint = pathPoints[i + 1]
+                                
+                                // Calculate unit vector for offsets to prevent clipping into pins
+                                val dx = endPoint.x - startPoint.x
+                                val dy = endPoint.y - startPoint.y
+                                val length = kotlin.math.sqrt(dx * dx + dy * dy)
+                                
+                                // Adjust offsets to prevent clipping but stay close to the targets
+                                // Smaller offset for Gate (start of path) and Stall (end of path)
+                                val startOffset = if (i == 0) (25.dp.toPx() / currentScale) else 0f
+                                val endOffset = if (i == pathPoints.size - 2) (28.dp.toPx() / currentScale) else 0f
+                                
+                                if (length > (startOffset + endOffset)) {
+                                    val ux = dx / length
+                                    val uy = dy / length
+                                    
+                                    val adjustedStart = Offset(
+                                        startPoint.x + ux * startOffset,
+                                        startPoint.y + uy * startOffset
+                                    )
+                                    val adjustedEnd = Offset(
+                                        endPoint.x - ux * endOffset,
+                                        endPoint.y - uy * endOffset
+                                    )
+
+                                    drawLine(
+                                        color = Color.Red,
+                                        start = adjustedStart,
+                                        end = adjustedEnd,
+                                        strokeWidth = 3.dp.toPx() / currentScale,
+                                        cap = StrokeCap.Round,
+                                        pathEffect = PathEffect.dashPathEffect(
+                                            floatArrayOf(10f / currentScale, 10f / currentScale),
+                                            0f
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Render all kept pins
                 if (contentFullSize != null) {
                     val fullWidth = contentFullSize.width.toFloat()
@@ -254,6 +321,8 @@ fun ZoomableBox(
                             contentDescription = "Selected Stall Pin",
                             tint = Color.Red,
                             modifier = Modifier
+                                .background(Color.White, CircleShape)
+                                .padding(2.dp)
                                 .size(54.dp)
                                 .graphicsLayer {
                                     // Set the origin of all transformations to the bottom-center tip
@@ -325,20 +394,38 @@ fun ZoomableBox(
                                     )
                                 }
                                 LabelType.LANDMARK -> {
-                                    Box(contentAlignment = Alignment.Center) {
+                                    val isSelected = label.id == selectedGateId
+                                    val iconScale = if (isSelected) 1.5f else 1.0f
+                                    
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier
+                                            .pointerInput(label.id) {
+                                                detectTapGestures {
+                                                    onLandmarkClick?.invoke(label.id)
+                                                }
+                                            }
+                                    ) {
                                         Icon(
                                             imageVector = Icons.Default.Place,
                                             contentDescription = null,
-                                            tint = Color.Gray.copy(alpha = 0.6f),
-                                            modifier = Modifier.size(16.dp).graphicsLayer { translationY = -12.dp.toPx() }
+                                            tint = if (isSelected) Color.Red else Color.Gray.copy(alpha = 0.6f),
+                                            modifier = Modifier
+                                                .size(16.dp)
+                                                .graphicsLayer { 
+                                                    scaleX = iconScale
+                                                    scaleY = iconScale
+                                                    translationY = -12.dp.toPx() * iconScale
+                                                }
                                         )
                                         Text(
                                             text = label.text,
                                             style = MaterialTheme.typography.labelSmall.copy(
-                                                fontSize = 9.sp,
-                                                fontWeight = FontWeight.SemiBold
+                                                fontSize = if (isSelected) 10.sp else 9.sp,
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold
                                             ),
-                                            color = Color.Gray
+                                            color = if (isSelected) Color.Red else Color.Gray,
+                                            modifier = Modifier.padding(horizontal = 2.dp)
                                         )
                                     }
                                 }
