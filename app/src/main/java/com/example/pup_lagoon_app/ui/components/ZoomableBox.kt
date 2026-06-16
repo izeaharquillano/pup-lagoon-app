@@ -322,21 +322,22 @@ fun ZoomableBox(
                                         val halfHeightVisible = containerHeightPx / (2f * s)
                                         val margin = 50f * density / s
 
-                                        val isVisible = s > 2.3f &&
+                                        val isVisible = s > 2.1f &&
                                                         abs(iconXRelCenter - off.x) < halfWidthVisible + margin &&
                                                         abs(iconYRelCenter - off.y) < halfHeightVisible + margin
                                         
                                         alpha = if (isVisible) 1f else 0f
+                                        transformOrigin = TransformOrigin(0.5f, 1f)
                                         scaleX = 1f / s
                                         scaleY = 1f / s
                                         translationX = iconX - (40.dp.toPx() / 2f)
-                                        translationY = iconY - (30.dp.toPx())
+                                        translationY = iconY - (60.dp.toPx())
                                     }
                                     .size(width = 40.dp, height = 60.dp)
                             ) {
                                 Column(
                                     horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.Center
+                                    verticalArrangement = Arrangement.Bottom
                                 ) {
                                     // Stall Number (Similar to Gate text)
                                     Surface(
@@ -362,7 +363,7 @@ fun ZoomableBox(
                                             .size(24.dp)
                                             .background(Maroon, CircleShape)
                                             .then(
-                                                if (currentScaleProvider() > 2.3f) {
+                                                if (currentScaleProvider() > 2.1f) {
                                                     Modifier.pointerInput(id) {
                                                         detectTapGestures {
                                                             onPinClick?.invoke(id)
