@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.pup_lagoon_app.data.FoodRecord
@@ -74,7 +75,8 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
         private set
 
     var selectedStallImages by mutableStateOf<List<String>>(emptyList())
-        private set
+    
+    var selectedFullscreenImage by mutableStateOf<String?>(null)
 
     var showBottomSheet by mutableStateOf(false)
 
@@ -105,7 +107,11 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
         private set
 
     var tutorialStep by mutableStateOf(0)
+    
+    var tutorialTargetBounds by mutableStateOf<Rect?>(null)
         private set
+
+    var searchBarBounds by mutableStateOf<Rect?>(null)
 
     var isMapLoading by mutableStateOf(true)
         private set
@@ -129,9 +135,18 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
     fun nextTutorialStep() {
         if (tutorialStep < 3) {
             tutorialStep++
+            tutorialTargetBounds = null // Reset for next step to trigger animation
         } else {
             completeTutorial()
         }
+    }
+
+    fun updateTutorialTarget(bounds: Rect) {
+        tutorialTargetBounds = bounds
+    }
+
+    fun updateSearchBarBounds(bounds: Rect) {
+        searchBarBounds = bounds
     }
 
     fun completeTutorial() {
@@ -322,6 +337,7 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
         displayStallId = null
         selectedStallName = null
         selectedStallImages = emptyList()
+        selectedFullscreenImage = null
         showBottomSheet = false
         navigationPath = emptyList()
         guidanceText = null

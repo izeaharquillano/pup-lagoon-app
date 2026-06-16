@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.runtime.*
 import com.example.pup_lagoon_app.ui.components.LoadingOverlay
 import com.example.pup_lagoon_app.ui.components.StallBottomSheetContent
+import com.example.pup_lagoon_app.ui.components.FullscreenImageViewer
 import androidx.compose.animation.*
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -37,6 +38,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -93,10 +97,17 @@ class MainActivity : ComponentActivity() {
                         if (viewModel.showTutorial) {
                             FeatureTutorial(
                                 step = viewModel.tutorialStep,
+                                targetBounds = viewModel.tutorialTargetBounds,
+                                searchBarBounds = viewModel.searchBarBounds,
                                 onNext = { viewModel.nextTutorialStep() },
                                 onSkip = { viewModel.completeTutorial() }
                             )
                         }
+
+                        FullscreenImageViewer(
+                            imageUrl = viewModel.selectedFullscreenImage,
+                            onDismiss = { viewModel.selectedFullscreenImage = null }
+                        )
                     }
                 }
             }
@@ -227,7 +238,13 @@ private fun MapLayer(
     
     Box(modifier = Modifier.fillMaxSize()) {
         ZoomableBox(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .onGloballyPositioned { coords ->
+                    if (viewModel.showTutorial && viewModel.tutorialStep == 1 || viewModel.tutorialStep == 2) {
+                        viewModel.updateTutorialTarget(coords.boundsInRoot())
+                    }
+                },
             contentAspectRatio = if (mapSize.width > 0) mapSize.width / mapSize.height else 1f,
             initialScale = 1.7f,
             initialCenterPixel = Offset(1787f, 1272f),
@@ -307,7 +324,13 @@ private fun SearchLayer(viewModel: MainViewModel) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(4.dp, RoundedCornerShape(28.dp)),
+            .shadow(4.dp, RoundedCornerShape(28.dp))
+            .onGloballyPositioned { coords ->
+                viewModel.updateSearchBarBounds(coords.boundsInRoot())
+                if (viewModel.showTutorial && viewModel.tutorialStep == 0) {
+                    viewModel.updateTutorialTarget(coords.boundsInRoot())
+                }
+            },
         color = Color.White,
         shape = RoundedCornerShape(28.dp)
     ) {
@@ -621,7 +644,12 @@ private fun BottomSheetLayer(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 4.dp),
+                    .padding(vertical = 4.dp)
+                    .onGloballyPositioned { coords ->
+                        if (viewModel.showTutorial && viewModel.tutorialStep == 3) {
+                            viewModel.updateTutorialTarget(coords.boundsInRoot())
+                        }
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 Box(
@@ -639,6 +667,7 @@ private fun BottomSheetLayer(
                 onDismiss = { viewModel.clearSelection() },
                 modifier = Modifier.weight(1f),
                 stallImages = viewModel.selectedStallImages,
+                onImageClick = { viewModel.selectedFullscreenImage = it },
                 progressProvider = sheetProgressProvider,
                 isKept = viewModel.isCurrentStallKept,
                 onToggleKeep = { viewModel.toggleKeepStall(viewModel.selectedStallId ?: "") }

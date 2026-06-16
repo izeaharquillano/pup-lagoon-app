@@ -28,7 +28,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.util.lerp
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -106,7 +108,11 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                 state = pagerState,
                 modifier = Modifier.weight(1f)
             ) { position ->
-                OnboardingPageContent(page = pages[position], isVisible = pagerState.currentPage == position)
+                OnboardingPageContent(
+                    page = pages[position], 
+                    pagerState = pagerState,
+                    pageIndex = position
+                )
             }
 
             // Bottom section
@@ -178,18 +184,33 @@ fun OnboardingScreen(onComplete: () -> Unit) {
 }
 
 @Composable
-fun OnboardingPageContent(page: OnboardingPage, isVisible: Boolean) {
+fun OnboardingPageContent(
+    page: OnboardingPage, 
+    pagerState: androidx.compose.foundation.pager.PagerState,
+    pageIndex: Int
+) {
+    val pageOffset = (pagerState.currentPage - pageIndex) + pagerState.currentPageOffsetFraction
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(32.dp),
+            .padding(32.dp)
+            .graphicsLayer {
+                // Parallax effect
+                translationX = pageOffset * size.width * 0.5f
+                alpha = 1f - lerp(0f, 1f, kotlin.math.abs(pageOffset))
+            },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        AnimatedVisibility(
-            visible = isVisible,
-            enter = fadeIn(spring(stiffness = Spring.StiffnessLow)) + scaleIn(initialScale = 0.8f),
-            exit = fadeOut()
+        Box(
+            modifier = Modifier
+                .graphicsLayer {
+                    scaleX = 1f - kotlin.math.abs(pageOffset) * 0.3f
+                    scaleY = 1f - kotlin.math.abs(pageOffset) * 0.3f
+                    rotationZ = pageOffset * 20f
+                },
+            contentAlignment = Alignment.Center
         ) {
             if (page.imageRes != null) {
                 Image(
@@ -219,30 +240,29 @@ fun OnboardingPageContent(page: OnboardingPage, isVisible: Boolean) {
 
         Spacer(modifier = Modifier.height(48.dp))
 
-        AnimatedVisibility(
-            visible = isVisible,
-            enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
-            exit = fadeOut()
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = page.title,
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Maroon,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = page.description,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color.DarkGray,
-                    textAlign = TextAlign.Center,
-                    lineHeight = 24.sp
-                )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.graphicsLayer {
+                translationY = pageOffset * 100f
             }
+        ) {
+            Text(
+                text = page.title,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = Maroon,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = page.description,
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color.DarkGray,
+                textAlign = TextAlign.Center,
+                lineHeight = 24.sp
+            )
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.example.pup_lagoon_app.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -68,6 +69,7 @@ fun StallBottomSheetContent(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     stallImages: List<String> = emptyList(),
+    onImageClick: (String) -> Unit = {},
     progressProvider: () -> Float = { 0.5f }, // 0f = Minimized, 0.5f = Halfway, 1f = Full
     isKept: Boolean = false,
     onToggleKeep: (Boolean) -> Unit = {}
@@ -261,7 +263,8 @@ fun StallBottomSheetContent(
                                     .size(120.dp)
                                     .padding(end = 8.dp)
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(Color.LightGray.copy(alpha = 0.3f)),
+                                    .background(Color.LightGray.copy(alpha = 0.3f))
+                                    .clickable { onImageClick(imageUrl) },
                             contentScale = ContentScale.Crop
                         )
                     }
