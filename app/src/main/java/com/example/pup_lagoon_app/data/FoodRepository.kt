@@ -268,15 +268,16 @@ class FoodRepository(private val context: Context) {
                 // Gate 2 (South) connects to the South walkway hub
                 path.add(Offset(1636f, 1768f))
                 
-                // This hub is near Stall 21.
-                // Determine direction: towards 27 (higher IDs) or 01 (lower IDs)
-                if (destId.toInt() >= 21) {
-                    // Go towards 27 (backwards in our loop)
-                    val seq = (21..27).map { String.format(Locale.US, "%02d", it) }
+                // Determine direction and entry point
+                if (destId.toInt() >= 22) {
+                    // Go towards 27 starting from 22
+                    val seq = (22..27).map { String.format(Locale.US, "%02d", it) }
                     val idx = seq.indexOf(destId)
                     for (i in 0..idx) { getStallOffset(seq[i])?.let { path.add(it) } }
+                } else if (destId == "21") {
+                    getStallOffset("21")?.let { path.add(it) }
                 } else {
-                    // Go towards 01 (forwards in our loop)
+                    // Go towards 01 starting from 21
                     val startIdx = fullLoop.indexOf("21")
                     val endIdx = fullLoop.indexOf(destId)
                     for (i in startIdx..endIdx) { getStallOffset(fullLoop[i])?.let { path.add(it) } }
@@ -288,15 +289,16 @@ class FoodRepository(private val context: Context) {
                 
                 // This hub is between 12 and 13.
                 if (destId.toInt() <= 12) {
-                    // Go UP towards 01
-                    val seq = (12 downTo 1).map { String.format(Locale.US, "%02d", it) }
-                    val idx = seq.indexOf(destId)
-                    for (i in 0..idx) { getStallOffset(seq[i])?.let { path.add(it) } }
-                } else {
-                    // Go DOWN towards 13, 14... 27
+                    // Go UP towards 01 (forward in fullLoop from "12")
                     val startIdx = fullLoop.indexOf("12")
                     val endIdx = fullLoop.indexOf(destId)
                     for (i in startIdx..endIdx) { getStallOffset(fullLoop[i])?.let { path.add(it) } }
+                } else {
+                    // Go DOWN towards 13, 14... 27 (backward in fullLoop from "13")
+                    val startIdx = fullLoop.indexOf("13")
+                    val endIdx = fullLoop.indexOf(destId)
+                    // Since 27 is index 0 and 13 is index 14, we go from startIdx down to endIdx
+                    for (i in startIdx downTo endIdx) { getStallOffset(fullLoop[i])?.let { path.add(it) } }
                 }
             }
         }
