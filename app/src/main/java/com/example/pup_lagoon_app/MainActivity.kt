@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.runtime.*
+import com.example.pup_lagoon_app.ui.components.LoadingOverlay
 import com.example.pup_lagoon_app.ui.components.StallBottomSheetContent
 import androidx.compose.animation.*
 import androidx.compose.animation.core.Spring
@@ -63,6 +64,8 @@ import com.example.pup_lagoon_app.ui.theme.PuplagoonappTheme
 import com.example.pup_lagoon_app.ui.utils.scrollbar
 import com.example.pup_lagoon_app.viewmodel.MainViewModel
 import kotlinx.coroutines.CoroutineScope
+import com.example.pup_lagoon_app.ui.components.OnboardingScreen
+import com.example.pup_lagoon_app.ui.components.FeatureTutorial
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -70,7 +73,32 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             PuplagoonappTheme {
-                MainScreen()
+                val context = LocalContext.current
+                val repository = remember { FoodRepository(context) }
+                val viewModel: MainViewModel = viewModel(
+                    factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                        @Suppress("UNCHECKED_CAST")
+                        override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                            return MainViewModel(repository) as T
+                        }
+                    }
+                )
+
+                if (viewModel.showOnboarding) {
+                    OnboardingScreen(onComplete = { viewModel.completeOnboarding() })
+                } else {
+                    Box {
+                        MainScreen(viewModel)
+                        
+                        if (viewModel.showTutorial) {
+                            FeatureTutorial(
+                                step = viewModel.tutorialStep,
+                                onNext = { viewModel.nextTutorialStep() },
+                                onSkip = { viewModel.completeTutorial() }
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -80,18 +108,7 @@ enum class SheetStage { Minimized, Halfway, Full }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(viewModelOverride: MainViewModel? = null) {
-    val context = LocalContext.current
-    val repository = remember { FoodRepository(context) }
-    val viewModel: MainViewModel = viewModelOverride ?: viewModel(
-        factory = object : androidx.lifecycle.ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                return MainViewModel(repository) as T
-            }
-        }
-    )
-
+fun MainScreen(viewModel: MainViewModel) {
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
 
@@ -208,49 +225,61 @@ private fun MapLayer(
     val mapPainter = painterResource(id = R.drawable.university_map)
     val mapSize = mapPainter.intrinsicSize
     
-    ZoomableBox(
-        modifier = Modifier.fillMaxSize(),
-        contentAspectRatio = if (mapSize.width > 0) mapSize.width / mapSize.height else 1f,
-        initialScale = 1.7f,
-        initialCenterPixel = Offset(1787f, 1272f),
-        targetCenterPixel = viewModel.selectedStallLocation,
-        selectedStallIds = viewModel.selectedStallIds,
-        selectedStallLocations = viewModel.selectedStallLocations,
-        contentFullSize = IntSize(mapSize.width.toInt(), mapSize.height.toInt()),
-        keptPins = viewModel.keptStallLocations,
-        mapLabels = viewModel.mapLabels,
-        navigationPath = viewModel.navigationPath,
-        selectedGateId = viewModel.selectedGateId,
-        onPinClick = { stallId ->
-            viewModel.selectStallById(stallId)
-        },
-        onLandmarkClick = { landmarkId ->
-            if (viewModel.selectedStallId != null) {
-                viewModel.updateRoute(landmarkId)
-            }
-        },
-        onInteraction = {
-            if (anchoredDraggableState.currentValue != SheetStage.Minimized) {
-                scope.launch {
-                    anchoredDraggableState.animateTo(SheetStage.Minimized)
+    Box(modifier = Modifier.fillMaxSize()) {
+        ZoomableBox(
+            modifier = Modifier.fillMaxSize(),
+            contentAspectRatio = if (mapSize.width > 0) mapSize.width / mapSize.height else 1f,
+            initialScale = 1.7f,
+            initialCenterPixel = Offset(1787f, 1272f),
+            targetCenterPixel = viewModel.selectedStallLocation,
+            selectedStallIds = viewModel.selectedStallIds,
+            selectedStallLocations = viewModel.selectedStallLocations,
+            contentFullSize = IntSize(mapSize.width.toInt(), mapSize.height.toInt()),
+            keptPins = viewModel.keptStallLocations,
+            mapLabels = viewModel.mapLabels,
+            navigationPath = viewModel.navigationPath,
+            selectedGateId = viewModel.selectedGateId,
+            allStallLocations = viewModel.allStallLocations,
+            isLoading = viewModel.isMapLoading,
+            onPinClick = { stallId ->
+                viewModel.selectStallById(stallId)
+            },
+            onLandmarkClick = { landmarkId ->
+                if (viewModel.selectedStallId != null) {
+                    viewModel.updateRoute(landmarkId)
+                }
+            },
+            onInteraction = {
+                if (anchoredDraggableState.currentValue != SheetStage.Minimized) {
+                    scope.launch {
+                        anchoredDraggableState.animateTo(SheetStage.Minimized)
+                    }
+                }
+            },
+            onClick = {
+                if (anchoredDraggableState.currentValue != SheetStage.Minimized) {
+                    scope.launch {
+                        anchoredDraggableState.animateTo(SheetStage.Minimized)
+                    }
                 }
             }
-        },
-        onClick = {
-            if (anchoredDraggableState.currentValue != SheetStage.Minimized) {
-                scope.launch {
-                    anchoredDraggableState.animateTo(SheetStage.Minimized)
-                }
+        ) {
+            Image(
+                painter = mapPainter,
+                contentDescription = "University Map",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Fit,
+                alpha = 1.0f
+            )
+
+            // Trigger onMapReady when the image is rendered
+            LaunchedEffect(Unit) {
+                viewModel.onMapReady()
             }
         }
-    ) {
-        Image(
-            painter = mapPainter,
-            contentDescription = "University Map",
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Fit,
-            alpha = 1.0f
-        )
+
+        // Place LoadingOverlay OUTSIDE ZoomableBox so it's not affected by pans/zooms
+        LoadingOverlay(isLoading = viewModel.isMapLoading)
     }
 }
 
@@ -638,7 +667,7 @@ fun MainScreenResultsPreview() {
     }
 
     PuplagoonappTheme {
-        MainScreen(viewModelOverride = viewModel)
+        MainScreen(viewModel = viewModel)
     }
 }
 
@@ -662,7 +691,7 @@ fun GuidanceMinimizedPreview() {
     }
 
     PuplagoonappTheme {
-        MainScreen(viewModelOverride = viewModel)
+        MainScreen(viewModel = viewModel)
     }
 }
 
@@ -674,7 +703,17 @@ fun GuidanceMinimizedPreview() {
 )
 @Composable
 fun MainScreenPreview() {
+    val context = LocalContext.current
+    val repository = remember { FoodRepository(context) }
+    val viewModel: MainViewModel = viewModel(
+        factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return MainViewModel(repository) as T
+            }
+        }
+    )
     PuplagoonappTheme {
-        MainScreen()
+        MainScreen(viewModel = viewModel)
     }
 }
