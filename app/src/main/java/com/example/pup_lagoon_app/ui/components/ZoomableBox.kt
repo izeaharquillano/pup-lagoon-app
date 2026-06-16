@@ -1,13 +1,22 @@
 package com.example.pup_lagoon_app.ui.components
 
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.VectorConverter
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateCentroid
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import kotlin.math.abs
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -22,6 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -77,34 +87,22 @@ fun ZoomableBox(
     allStallLocations: Map<String, Offset> = emptyMap(),
     content: @Composable () -> Unit,
 ) {
-    var scale by remember { mutableFloatStateOf(initialScale) }
-    var rawOffset by remember { mutableStateOf(Offset.Zero) }
+    val scope = rememberCoroutineScope()
+    val scaleAnimatable = remember { Animatable(initialScale) }
+    val offsetAnimatable = remember { Animatable(Offset.Zero, Offset.VectorConverter) }
     var initialized by remember { mutableStateOf(false) }
-    var isInteracting by remember { mutableStateOf(value = false) }
+    
+    // Staggered initialization to prevent startup choppiness
+    var showMapElements by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        // Delay map elements slightly to let the initial layout and map image stabilize
+        kotlinx.coroutines.delay(600)
+        showMapElements = true
+    }
 
-    // Animate the offset for smooth panning when a stall is selected
-    val animatedOffset by animateOffsetAsState(
-        targetValue = rawOffset,
-        animationSpec = tween(
-            durationMillis = 1000,
-            easing = FastOutSlowInEasing
-        ),
-        label = "map_offset"
-    )
-
-    // Animate the scale for smooth zooming
-    val animatedScale by animateFloatAsState(
-        targetValue = scale,
-        animationSpec = tween(
-            durationMillis = 1000,
-            easing = FastOutSlowInEasing
-        ),
-        label = "map_scale"
-    )
-
-    // Use raw values while interacting for zero lag, animated values otherwise
-    val currentOffset = if (isInteracting) rawOffset else animatedOffset
-    val currentScale = if (isInteracting) scale else animatedScale
+    // Use lambda providers for state reads to defer to draw phase and avoid recomposition
+    val currentOffsetProvider = { offsetAnimatable.value }
+    val currentScaleProvider = { scaleAnimatable.value }
 
     BoxWithConstraints(
         modifier = modifier,
@@ -140,8 +138,9 @@ fun ZoomableBox(
                 val containerWidthPx = containerWidth * density
                 val containerHeightPx = containerHeight * density
 
-                val maxX = (baseWidthPx * scale - containerWidthPx).coerceAtLeast(0f) / (2f * scale)
-                val maxY = (baseHeightPx * scale - containerHeightPx).coerceAtLeast(0f) / (2f * scale)
+                val currentScale = scaleAnimatable.value
+                val maxX = (baseWidthPx * currentScale - containerWidthPx).coerceAtLeast(0f) / (2f * currentScale)
+                val maxY = (baseHeightPx * currentScale - containerHeightPx).coerceAtLeast(0f) / (2f * currentScale)
 
                 return Offset(
                     targetBaseX.coerceIn(-maxX, maxX),
@@ -152,18 +151,21 @@ fun ZoomableBox(
             // Initial positioning
             LaunchedEffect(containerWidth, containerHeight, contentFullSize, initialCenterPixel) {
                 if (!initialized && contentFullSize != null && initialCenterPixel != null) {
-                    rawOffset = calculateBoundOffset(initialCenterPixel, contentFullSize)
+                    val initialOffset = calculateBoundOffset(initialCenterPixel, contentFullSize)
+                    offsetAnimatable.snapTo(initialOffset)
                     initialized = true
                 }
             }
 
             LaunchedEffect(targetCenterPixel, contentFullSize) {
                 if (targetCenterPixel != null && contentFullSize != null) {
-                    // Force interaction to false so we use animated values for the jump
-                    isInteracting = false
-                    rawOffset = calculateBoundOffset(targetCenterPixel, contentFullSize)
-                    // Reset zoom to initialScale when selecting a new stall
-                    scale = initialScale
+                    val targetOffset = calculateBoundOffset(targetCenterPixel, contentFullSize)
+                    scope.launch {
+                        offsetAnimatable.animateTo(
+                            targetValue = targetOffset,
+                            animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing)
+                        )
+                    }
                 }
             }
 
@@ -176,62 +178,86 @@ fun ZoomableBox(
                         )
                     }
                     .pointerInput(Unit) {
-                        detectTransformGestures { centroid, pan, zoom, _ ->
-                            isInteracting = true
+                        awaitEachGesture {
+                            awaitFirstDown()
                             onInteraction?.invoke()
+                            do {
+                                val event = awaitPointerEvent()
+                                val zoom = event.calculateZoom()
+                                val pan = event.calculatePan()
+                                val centroid = event.calculateCentroid()
 
-                            val oldScale = scale
-                            val newScale = (scale * zoom).coerceIn(minScale, maxScale)
-                            
-                            val baseWidthPx = baseWidth * density
-                            val baseHeightPx = baseHeight * density
-                            
-                            // Centroid relative to the center of the content box
-                            val relativeCentroid = Offset(
-                                centroid.x - baseWidthPx / 2f,
-                                centroid.y - baseHeightPx / 2f
-                            )
+                                if (zoom != 1f || pan != Offset.Zero) {
+                                    val oldScale = scaleAnimatable.value
+                                    val newScale = (oldScale * zoom).coerceIn(minScale, maxScale)
+                                    
+                                    val baseWidthPx = baseWidth * density
+                                    val baseHeightPx = baseHeight * density
+                                    
+                                    val relativeCentroid = Offset(
+                                        centroid.x - baseWidthPx / 2f,
+                                        centroid.y - baseHeightPx / 2f
+                                    )
 
-                            // Correctly calculate new offset to keep the point under the fingers
-                            val newOffset = (rawOffset + relativeCentroid / oldScale) - 
-                                           (relativeCentroid / newScale + pan / oldScale)
+                                    val currentOffset = offsetAnimatable.value
+                                    val newOffset = (currentOffset + relativeCentroid / oldScale) - 
+                                                   (relativeCentroid / newScale + pan / oldScale)
 
-                            scale = newScale
+                                    val containerWidthPx = containerWidth * density
+                                    val containerHeightPx = containerHeight * density
 
-                            val containerWidthPx = containerWidth * density
-                            val containerHeightPx = containerHeight * density
+                                    val maxX = (baseWidthPx * newScale - containerWidthPx).coerceAtLeast(0f) / (2f * newScale)
+                                    val maxY = (baseHeightPx * newScale - containerHeightPx).coerceAtLeast(0f) / (2f * newScale)
 
-                            val maxX = (baseWidthPx * scale - containerWidthPx).coerceAtLeast(0f) / (2f * scale)
-                            val maxY = (baseHeightPx * scale - containerHeightPx).coerceAtLeast(0f) / (2f * scale)
+                                    val finalOffset = Offset(
+                                        newOffset.x.coerceIn(-maxX, maxX),
+                                        newOffset.y.coerceIn(-maxY, maxY)
+                                    )
 
-                            rawOffset = Offset(
-                                newOffset.x.coerceIn(-maxX, maxX),
-                                newOffset.y.coerceIn(-maxY, maxY)
-                            )
+                                    // Update animatables using the composition's scope
+                                    // but launch it as UNDISPATCHED to handle the update immediately
+                                    // without the 1-frame/dispatcher delay
+                                    scope.launch(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
+                                        scaleAnimatable.snapTo(newScale)
+                                        offsetAnimatable.snapTo(finalOffset)
+                                    }
+                                }
+                            } while (event.changes.any { it.pressed })
                         }
-                        // Reset interaction state after gestures end
-                        isInteracting = false
                     }
                     .graphicsLayer {
-                        scaleX = currentScale
-                        scaleY = currentScale
-                        translationX = -currentOffset.x * currentScale
-                        translationY = -currentOffset.y * currentScale
+                        val s = currentScaleProvider()
+                        val off = currentOffsetProvider()
+                        scaleX = s
+                        scaleY = s
+                        translationX = -off.x * s
+                        translationY = -off.y * s
                     }
             ) {
                 content()
 
                 // Render Route Guidance Path
-                if (contentFullSize != null && navigationPath.isNotEmpty()) {
+                if (showMapElements && contentFullSize != null && navigationPath.isNotEmpty()) {
                     val fullWidth = contentFullSize.width.toFloat()
                     val fullHeight = contentFullSize.height.toFloat()
 
+                    val baseWidthPx = baseWidth * density
+                    val baseHeightPx = baseHeight * density
+
+                    // Pre-map the raw normalized points to avoid allocation in draw phase
+                    val normalizedPath = remember(navigationPath, fullWidth, fullHeight) {
+                        navigationPath.map { point ->
+                            Offset(point.x / fullWidth, point.y / fullHeight)
+                        }
+                    }
+
                     Canvas(modifier = Modifier.fillMaxSize()) {
-                        val pathPoints = navigationPath.map { point ->
+                        val s = currentScaleProvider()
+                        val pathPoints = normalizedPath.map { point ->
                             Offset(
-                                (point.x / fullWidth) * baseWidth * density,
+                                point.x * baseWidthPx,
                                 // Offset Y upwards slightly (2dp) to meet the visual tip of the LocationOn icon
-                                (point.y / fullHeight) * baseHeight * density - (2.dp.toPx() / currentScale)
+                                point.y * baseHeightPx - (2.dp.toPx() / s)
                             )
                         }
 
@@ -247,11 +273,11 @@ fun ZoomableBox(
                                 path = path,
                                 color = Color.Red,
                                 style = androidx.compose.ui.graphics.drawscope.Stroke(
-                                    width = 3.dp.toPx() / currentScale,
+                                    width = 3.dp.toPx() / s,
                                     cap = StrokeCap.Round,
                                     join = androidx.compose.ui.graphics.StrokeJoin.Round,
                                     pathEffect = PathEffect.dashPathEffect(
-                                        floatArrayOf(10f / currentScale, 10f / currentScale),
+                                        floatArrayOf(10f / s, 10f / s),
                                         0f
                                     )
                                 )
@@ -260,68 +286,159 @@ fun ZoomableBox(
                     }
                 }
 
-                // Render All Stall Icons (Small circles, clickable at higher zoom)
-                if (contentFullSize != null && currentScale > 2.5f) {
+                // Render All Stall Icons (Storefront icon, clickable at higher zoom)
+                if (showMapElements && contentFullSize != null) {
                     val fullWidth = contentFullSize.width.toFloat()
                     val fullHeight = contentFullSize.height.toFloat()
+
+                    val baseWidthPx = baseWidth * density
+                    val baseHeightPx = baseHeight * density
+                    val containerWidthPx = containerWidth * density
+                    val containerHeightPx = containerHeight * density
 
                     allStallLocations.forEach { (id, location) ->
                         // Only show if NOT currently selected or kept (to avoid overlap with pins)
                         if (id !in selectedStallIds && id !in keptPins.keys) {
-                            val iconX = (location.x / fullWidth) * baseWidth * density
-                            val iconY = (location.y / fullHeight) * baseHeight * density
+                            val iconX = (location.x / fullWidth) * baseWidthPx
+                            val iconY = (location.y / fullHeight) * baseHeightPx
+
+                            val iconXRelCenter = iconX - baseWidthPx / 2f
+                            val iconYRelCenter = iconY - baseHeightPx / 2f
 
                             Box(
                                 contentAlignment = Alignment.Center,
                                 modifier = Modifier
                                     .graphicsLayer {
-                                        scaleX = 1f / currentScale
-                                        scaleY = 1f / currentScale
-                                        translationX = iconX - 12.dp.toPx()
-                                        translationY = iconY - 12.dp.toPx()
+                                        val s = currentScaleProvider()
+                                        val off = currentOffsetProvider()
+                                        
+                                        val halfWidthVisible = containerWidthPx / (2f * s)
+                                        val halfHeightVisible = containerHeightPx / (2f * s)
+                                        val margin = 50f * density / s
+
+                                        val isVisible = s > 2.3f &&
+                                                        abs(iconXRelCenter - off.x) < halfWidthVisible + margin &&
+                                                        abs(iconYRelCenter - off.y) < halfHeightVisible + margin
+                                        
+                                        alpha = if (isVisible) 1f else 0f
+                                        scaleX = 1f / s
+                                        scaleY = 1f / s
+                                        translationX = iconX - (40.dp.toPx() / 2f)
+                                        translationY = iconY - (30.dp.toPx())
                                     }
-                                    .size(24.dp)
-                                    .background(Maroon.copy(alpha = 0.8f), CircleShape)
-                                    .pointerInput(id) {
-                                        detectTapGestures {
-                                            onPinClick?.invoke(id)
-                                        }
-                                    }
+                                    .size(width = 40.dp, height = 60.dp)
                             ) {
-                                Text(
-                                    text = id.trimStart('0'),
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        color = Color.White,
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                )
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    // Stall Number (Similar to Gate text)
+                                    Surface(
+                                        color = Color.White.copy(alpha = 0.8f),
+                                        shape = RoundedCornerShape(4.dp),
+                                        modifier = Modifier.padding(bottom = 4.dp)
+                                    ) {
+                                        Text(
+                                            text = "Stall ${id.trimStart('0')}",
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                fontSize = 8.sp,
+                                                fontWeight = FontWeight.SemiBold
+                                            ),
+                                            color = Maroon,
+                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                        )
+                                    }
+
+                                    // Storefront Icon with background circle
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .background(Maroon, CircleShape)
+                                            .then(
+                                                if (currentScaleProvider() > 2.3f) {
+                                                    Modifier.pointerInput(id) {
+                                                        detectTapGestures {
+                                                            onPinClick?.invoke(id)
+                                                        }
+                                                    }
+                                                } else Modifier
+                                            )
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Storefront,
+                                            contentDescription = "Stall Icon",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
                 }
 
                 // Render all kept pins
-                if (contentFullSize != null) {
+                if (showMapElements && contentFullSize != null) {
                     val fullWidth = contentFullSize.width.toFloat()
                     val fullHeight = contentFullSize.height.toFloat()
+                    
+                    val baseWidthPx = baseWidth * density
+                    val baseHeightPx = baseHeight * density
+                    val containerWidthPx = containerWidth * density
+                    val containerHeightPx = containerHeight * density
 
                     keptPins.forEach { (id, location) ->
                         // Skip if it's one of the currently selected stalls
                         if (id !in selectedStallIds) {
-                            val pinX = (location.x / fullWidth) * baseWidth * density
-                            val pinY = (location.y / fullHeight) * baseHeight * density
+                            val pinX = (location.x / fullWidth) * baseWidthPx
+                            val pinY = (location.y / fullHeight) * baseHeightPx
 
+                            val xRel = pinX - baseWidthPx / 2f
+                            val yRel = pinY - baseHeightPx / 2f
+                            
                             Box(
                                 contentAlignment = Alignment.Center,
                                 modifier = Modifier
                                     .graphicsLayer {
+                                        val s = currentScaleProvider()
+                                        val off = currentOffsetProvider()
+                                        
+                                        val halfWidthVisible = containerWidthPx / (2f * s)
+                                        val halfHeightVisible = containerHeightPx / (2f * s)
+                                        val margin = 60f * density / s
+
+                                        val isVisible = abs(xRel - off.x) < halfWidthVisible + margin &&
+                                                        abs(yRel - off.y) < halfHeightVisible + margin
+
+                                        alpha = if (isVisible) 1f else 0f
                                         transformOrigin = TransformOrigin(0.5f, 1f)
-                                        scaleX = 1f / currentScale
-                                        scaleY = 1f / currentScale
+                                        scaleX = 1f / s
+                                        scaleY = 1f / s
                                         translationX = pinX - 22.dp.toPx()
                                         translationY = pinY - 44.dp.toPx()
                                     }
+                                    .then(
+                                        // Only add pointerInput if it's actually visible to avoid blocking gestures
+                                        // Note: We use a small margin check consistent with graphicsLayer visibility
+                                        run {
+                                            val s = currentScaleProvider()
+                                            val off = currentOffsetProvider()
+                                            val halfWidthVisible = containerWidthPx / (2f * s)
+                                            val halfHeightVisible = containerHeightPx / (2f * s)
+                                            val margin = 60f * density / s
+                                            val isVisible = abs(xRel - off.x) < halfWidthVisible + margin &&
+                                                            abs(yRel - off.y) < halfHeightVisible + margin
+                                            
+                                            if (isVisible) {
+                                                Modifier.pointerInput(id) {
+                                                    detectTapGestures {
+                                                        onPinClick?.invoke(id)
+                                                    }
+                                                }
+                                            } else Modifier
+                                        }
+                                    )
                             ) {
                                 // White filler for the head of the pin
                                 Box(
@@ -338,13 +455,7 @@ fun ZoomableBox(
                                     imageVector = Icons.Default.LocationOn,
                                     contentDescription = "Kept Pin",
                                     tint = Color(0xFFB71C1C),
-                                    modifier = Modifier
-                                        .size(44.dp)
-                                        .pointerInput(id) {
-                                            detectTapGestures {
-                                                onPinClick?.invoke(id)
-                                            }
-                                        }
+                                    modifier = Modifier.size(44.dp)
                                 )
                             }
                         }
@@ -352,7 +463,7 @@ fun ZoomableBox(
                 }
 
                 // Selected Pins Overlay
-                if (contentFullSize != null) {
+                if (showMapElements && contentFullSize != null) {
                     val fullWidth = contentFullSize.width.toFloat()
                     val fullHeight = contentFullSize.height.toFloat()
 
@@ -364,9 +475,10 @@ fun ZoomableBox(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier
                                 .graphicsLayer {
+                                    val s = currentScaleProvider()
                                     transformOrigin = TransformOrigin(0.5f, 1f)
-                                    scaleX = 1f / currentScale
-                                    scaleY = 1f / currentScale
+                                    scaleX = 1f / s
+                                    scaleY = 1f / s
                                     translationX = pinX - 27.dp.toPx()
                                     translationY = pinY - 54.dp.toPx()
                                 }
@@ -398,116 +510,155 @@ fun ZoomableBox(
                     }
 
                     // Render Map Labels
-                    mapLabels.forEach { label ->
-                        val labelX = (label.pixelX / fullWidth) * baseWidth * density
-                        val labelY = (label.pixelY / fullHeight) * baseHeight * density
+                    val baseWidthPx = baseWidth * density
+                    val baseHeightPx = baseHeight * density
+                    val containerWidthPx = containerWidth * density
+                    val containerHeightPx = containerHeight * density
 
+                    mapLabels.forEach { label ->
+                        val labelX = (label.pixelX / fullWidth) * baseWidthPx
+                        val labelY = (label.pixelY / fullHeight) * baseHeightPx
+
+                        val xRel = labelX - baseWidthPx / 2f
+                        val yRel = labelY - baseHeightPx / 2f
+                        
                         Box(
                             modifier = Modifier
                                 .graphicsLayer {
+                                    val s = currentScaleProvider()
+                                    val off = currentOffsetProvider()
+
+                                    val halfWidthVisible = containerWidthPx / (2f * s)
+                                    val halfHeightVisible = containerHeightPx / (2f * s)
+                                    val margin = 100f * density / s
+
+                                    val isVisible = abs(xRel - off.x) < halfWidthVisible + margin &&
+                                                    abs(yRel - off.y) < halfHeightVisible + margin
+
+                                    alpha = if (isVisible) 1f else 0f
                                     transformOrigin = TransformOrigin(0.5f, 0.5f)
-                                    scaleX = 1f / currentScale
-                                    scaleY = 1f / currentScale
+                                    scaleX = 1f / s
+                                    scaleY = 1f / s
                                     translationX = labelX - (100.dp.toPx() / 2f)
                                     translationY = labelY - (50.dp.toPx() / 2f)
                                 }
-                                .size(width = 100.dp, height = 50.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            when (label.type) {
-                                LabelType.BUILDING -> {
-                                    Surface(
-                                        color = Color.White.copy(alpha = 0.8f),
-                                        shape = RoundedCornerShape(4.dp),
-                                        shadowElevation = 2.dp
-                                    ) {
-                                        Text(
-                                            text = label.text,
-                                            style = MaterialTheme.typography.labelMedium.copy(
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 10.sp
-                                            ),
-                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
-                                            color = Color.Black
-                                        )
-                                    }
-                                }
-                                LabelType.STREET -> {
-                                    Text(
-                                        text = label.text,
-                                        style = MaterialTheme.typography.labelSmall.copy(
-                                            fontStyle = FontStyle.Italic,
-                                            fontSize = 8.sp,
-                                            fontWeight = FontWeight.Medium
-                                        ),
-                                        color = Color.DarkGray.copy(alpha = 0.7f),
-                                        modifier = Modifier.rotate(label.rotation)
-                                    )
-                                }
-                                LabelType.LANDMARK -> {
-                                    val isSelected = label.id == selectedGateId
-                                    val iconScale = if (isSelected) 1.5f else 1.0f
-                                    
-                                    Box(
-                                        contentAlignment = Alignment.Center,
-                                        modifier = Modifier
-                                            .pointerInput(label.id) {
+                                .then(
+                                    if (label.type == LabelType.LANDMARK) {
+                                        val s = currentScaleProvider()
+                                        val off = currentOffsetProvider()
+                                        val halfWidthVisible = containerWidthPx / (2f * s)
+                                        val halfHeightVisible = containerHeightPx / (2f * s)
+                                        val margin = 100f * density / s
+                                        val isVisible = abs(xRel - off.x) < halfWidthVisible + margin &&
+                                                        abs(yRel - off.y) < halfHeightVisible + margin
+                                        
+                                        if (isVisible) {
+                                            Modifier.pointerInput(label.id) {
                                                 detectTapGestures {
                                                     onLandmarkClick?.invoke(label.id)
                                                 }
                                             }
-                                    ) {
-                                        // Text ABOVE icon with dynamic spacing
+                                        } else Modifier
+                                    } else Modifier
+                                )
+                                .size(width = 100.dp, height = 50.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                                when (label.type) {
+                                    LabelType.BUILDING -> {
                                         Surface(
                                             color = Color.White.copy(alpha = 0.8f),
                                             shape = RoundedCornerShape(4.dp),
-                                            modifier = Modifier
-                                                .graphicsLayer {
-                                                    // Move text above the center (coordinate)
-                                                    // Base: -24dp (icon height) - 8dp (padding) = -32dp
-                                                    // Selection: Shift up by 12dp to clear expanded icon (36dp + 8dp = 44dp)
-                                                    translationY = if (isSelected) -44.dp.toPx() else -32.dp.toPx()
-                                                }
+                                            shadowElevation = 2.dp
                                         ) {
                                             Text(
                                                 text = label.text,
-                                                style = MaterialTheme.typography.labelSmall.copy(
-                                                    fontSize = if (isSelected) 10.sp else 9.sp,
-                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold
+                                                style = MaterialTheme.typography.labelMedium.copy(
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 10.sp
                                                 ),
-                                                color = if (isSelected) Color.Red else Color.Gray,
-                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                                                color = Color.Black
                                             )
                                         }
-
-                                        Box(contentAlignment = Alignment.Center) {
-                                            // White circle to fill the "hole" in the pin
-                                            Box(
+                                    }
+                                    LabelType.STREET -> {
+                                        Text(
+                                            text = label.text,
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                fontStyle = FontStyle.Italic,
+                                                fontSize = 8.sp,
+                                                fontWeight = FontWeight.Medium
+                                            ),
+                                            color = Color.DarkGray.copy(alpha = 0.7f),
+                                            modifier = Modifier.rotate(label.rotation)
+                                        )
+                                    }
+                                    LabelType.LANDMARK -> {
+                                        val isSelected = label.id == selectedGateId
+                                        val iconScale = if (isSelected) 1.5f else 1.0f
+                                        
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier
+                                                .pointerInput(label.id) {
+                                                    detectTapGestures {
+                                                        onLandmarkClick?.invoke(label.id)
+                                                    }
+                                                }
+                                        ) {
+                                            // Text ABOVE icon with dynamic spacing
+                                            Surface(
+                                                color = Color.White.copy(alpha = 0.8f),
+                                                shape = RoundedCornerShape(4.dp),
                                                 modifier = Modifier
-                                                    .size(9.dp)
                                                     .graphicsLayer {
-                                                        scaleX = iconScale
-                                                        scaleY = iconScale
-                                                        transformOrigin = TransformOrigin(0.5f, 1f)
-                                                        // Head center is 18dp up from tip. Scaling from the tip (1f) keeps this distance proportional.
-                                                        translationY = -18.dp.toPx()
+                                                        // Move text above the center (coordinate)
+                                                        // Base: -24dp (icon height) - 8dp (padding) = -32dp
+                                                        // Selection: Shift up by 12dp to clear expanded icon (36dp + 8dp = 44dp)
+                                                        translationY = if (isSelected) -44.dp.toPx() else -32.dp.toPx()
                                                     }
-                                                    .background(Color.White, CircleShape)
-                                            )
-                                            Icon(
-                                                imageVector = Icons.Default.LocationOn,
-                                                contentDescription = null,
-                                                tint = if (isSelected) Color.Red else Color.Gray.copy(alpha = 0.8f),
-                                                modifier = Modifier
-                                                    .size(24.dp)
-                                                    .graphicsLayer { 
-                                                        scaleX = iconScale
-                                                        scaleY = iconScale
-                                                        transformOrigin = TransformOrigin(0.5f, 1f)
-                                                        // Move the icon center up by 12dp so the bottom tip is at the layout center (coordinate)
-                                                        translationY = -12.dp.toPx()
-                                                    }
-                                            )
+                                            ) {
+                                                Text(
+                                                    text = label.text,
+                                                    style = MaterialTheme.typography.labelSmall.copy(
+                                                        fontSize = if (isSelected) 10.sp else 9.sp,
+                                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold
+                                                    ),
+                                                    color = if (isSelected) Color.Red else Color.Gray,
+                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                )
+                                            }
+
+                                            Box(contentAlignment = Alignment.Center) {
+                                                // White circle to fill the "hole" in the pin
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(9.dp)
+                                                        .graphicsLayer {
+                                                            scaleX = iconScale
+                                                            scaleY = iconScale
+                                                            transformOrigin = TransformOrigin(0.5f, 1f)
+                                                            // Head center is 18dp up from tip. Scaling from the tip (1f) keeps this distance proportional.
+                                                            translationY = -18.dp.toPx()
+                                                        }
+                                                        .background(Color.White, CircleShape)
+                                                )
+                                                Icon(
+                                                    imageVector = Icons.Default.LocationOn,
+                                                    contentDescription = null,
+                                                    tint = if (isSelected) Color.Red else Color.Gray.copy(alpha = 0.8f),
+                                                    modifier = Modifier
+                                                        .size(24.dp)
+                                                        .graphicsLayer { 
+                                                            scaleX = iconScale
+                                                            scaleY = iconScale
+                                                            transformOrigin = TransformOrigin(0.5f, 1f)
+                                                            // Move the icon center up by 12dp so the bottom tip is at the layout center (coordinate)
+                                                            translationY = -12.dp.toPx()
+                                                        }
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -518,4 +669,3 @@ fun ZoomableBox(
             }
         }
     }
-}
