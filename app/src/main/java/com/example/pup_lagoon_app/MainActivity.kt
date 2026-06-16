@@ -163,7 +163,16 @@ fun MainScreen(viewModelOverride: MainViewModel? = null) {
             // Animate to the last active stage when a new stall is selected
             LaunchedEffect(viewModel.selectedStallId) {
                 if (viewModel.selectedStallId != null) {
-                    anchoredDraggableState.animateTo(viewModel.lastActiveStage)
+                    if (!viewModel.hasInteractedWithSheet) {
+                        // First time opening: go to Halfway
+                        anchoredDraggableState.animateTo(SheetStage.Halfway)
+                        viewModel.hasInteractedWithSheet = true
+                    } else {
+                        // Subsequent clicks: Only expand if it's NOT currently minimized
+                        if (anchoredDraggableState.currentValue != SheetStage.Minimized) {
+                            anchoredDraggableState.animateTo(viewModel.lastActiveStage)
+                        }
+                    }
                 }
             }
 
@@ -420,14 +429,13 @@ private fun GuidanceLayer(viewModel: MainViewModel) {
         if (viewModel.isGuidanceMinimized) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(end = 2.dp),
+                    .fillMaxWidth(),
                 contentAlignment = Alignment.CenterEnd
             ) {
                 IconButton(
                     onClick = { viewModel.isGuidanceMinimized = false },
                     modifier = Modifier
-                        .padding(4.dp)
+                        .padding(top = 4.dp, bottom = 4.dp, start = 4.dp, end = 0.dp)
                         .shadow(4.dp, CircleShape)
                         .background(Maroon, CircleShape)
                         .size(40.dp)
@@ -627,6 +635,30 @@ fun MainScreenResultsPreview() {
     LaunchedEffect(Unit) {
         viewModel.onSearchQueryChange("Burger")
         viewModel.performManualSearch()
+    }
+
+    PuplagoonappTheme {
+        MainScreen(viewModelOverride = viewModel)
+    }
+}
+
+@Preview(showBackground = true, name = "Guidance Minimized")
+@Composable
+fun GuidanceMinimizedPreview() {
+    val context = LocalContext.current
+    val repository = remember { FoodRepository(context) }
+    val viewModel: MainViewModel = viewModel(
+        factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return MainViewModel(repository) as T
+            }
+        }
+    )
+    
+    LaunchedEffect(Unit) {
+        viewModel.selectStallById("1") // Select a stall to show guidance
+        viewModel.isGuidanceMinimized = true
     }
 
     PuplagoonappTheme {

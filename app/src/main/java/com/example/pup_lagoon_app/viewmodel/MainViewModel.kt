@@ -96,6 +96,8 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
 
     var lastActiveStage by mutableStateOf(com.example.pup_lagoon_app.SheetStage.Halfway)
 
+    var hasInteractedWithSheet by mutableStateOf(false)
+
     var keptStallIds by mutableStateOf(setOf<String>())
         private set
 
