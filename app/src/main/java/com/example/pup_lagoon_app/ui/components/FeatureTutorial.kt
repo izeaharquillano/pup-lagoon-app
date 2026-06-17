@@ -68,7 +68,7 @@ fun FeatureTutorial(
         ),
         TutorialStep(
             title = "Stall Details",
-            description = "The bottom sheet reveals everything you need: photos, menus, and the option to save your favorites.",
+            description = "The bottom sheet reveals everything you need: photos, food, and drinks.",
             alignment = Alignment.BottomCenter,
             offsetY = (-120).dp
         )
