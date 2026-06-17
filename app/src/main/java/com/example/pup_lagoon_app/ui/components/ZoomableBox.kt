@@ -369,7 +369,7 @@ fun ZoomableBox(
                                         transformOrigin = TransformOrigin(0.5f, 1f)
                                         scaleX = 1f / s
                                         scaleY = 1f / s
-                                        translationX = iconX - (120.dp.toPx() / 2f)
+                                        translationX = iconX - (140.dp.toPx() / 2f)
                                         
                                         // The container is 60dp high.
                                         // The circle icon is 24dp high and at the BOTTOM of the container.
@@ -377,7 +377,7 @@ fun ZoomableBox(
                                         // To center that circle on 'iconY', we need to offset by (60 - 12) = 48dp.
                                         translationY = iconY - (60.dp.toPx())
                                     }
-                                    .size(width = 120.dp, height = 60.dp)
+                                    .size(width = 140.dp, height = 60.dp)
                                     .pointerInput(id) {
                                         awaitEachGesture {
                                             val down = awaitFirstDown(requireUnconsumed = false)
@@ -423,7 +423,7 @@ fun ZoomableBox(
                                         val s = currentScaleProvider()
                                         val displayText = if (s > 3.0f && !stallLocation.stallName.isNullOrEmpty()) {
                                             val name = stallLocation.stallName
-                                            if (name.length > 12) name.take(12) + "..." else name
+                                            if (name.length > 15) name.take(15) + "..." else name
                                         } else {
                                             "Stall ${id.trimStart('0')}"
                                         }
