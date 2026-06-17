@@ -475,7 +475,7 @@ fun ZoomableBox(
                                 Icon(
                                     imageVector = Icons.Default.LocationOn,
                                     contentDescription = "Kept Pin",
-                                    tint = Color(0xFFB71C1C),
+                                    tint = Maroon,
                                     modifier = Modifier.size(44.dp)
                                 )
                             }
