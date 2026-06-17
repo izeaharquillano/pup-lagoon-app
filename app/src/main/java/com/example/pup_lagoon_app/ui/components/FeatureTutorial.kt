@@ -3,12 +3,10 @@ package com.example.pup_lagoon_app.ui.components
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -19,23 +17,18 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.drawscope.clipPath
-import androidx.compose.ui.layout.LayoutCoordinates
-import androidx.compose.ui.layout.boundsInRoot
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.round
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import com.example.pup_lagoon_app.ui.theme.PuplagoonappTheme
 import com.example.pup_lagoon_app.ui.theme.Maroon
 
@@ -43,171 +36,251 @@ import com.example.pup_lagoon_app.ui.theme.Maroon
 fun FeatureTutorial(
     step: Int,
     targetBounds: Rect?,
-    searchBarBounds: Rect? = null,
-    onNext: () -> Unit,
-    onSkip: () -> Unit
+    onSkip: () -> Unit,
+    isVisible: Boolean,
+    content: @Composable () -> Unit
 ) {
     val tutorialData = listOf(
         TutorialStep(
-            title = "Search & Filter",
-            description = "Find your favorite food or stalls using the search bar. Use filters to narrow down by category or price.",
+            title = "Explore the Lagoon",
+            description = "Start by panning the map to see different areas of the PUP Lagoon.",
             alignment = Alignment.TopCenter,
-            offsetY = 160.dp
+            offsetY = 10.dp
         ),
         TutorialStep(
-            title = "Interactive Map",
-            description = "Pinch to zoom and drag to explore. Tap on any red pin to see stall details and menus.",
+            title = "Zoom for Details",
+            description = "Pinch to zoom in and see individual stalls and landmarks more clearly.",
+            alignment = Alignment.TopCenter,
+            offsetY = 10.dp
+        ),
+        TutorialStep(
+            title = "Quick Search",
+            description = "Tap the search bar to find specific food items or your favorite stalls.",
             alignment = Alignment.Center,
             offsetY = 0.dp
         ),
         TutorialStep(
-            title = "Smart Directions",
-            description = "Need help finding a stall? Tap on a Gate icon (Gate 1, 2, or 3) to see the fastest route.",
-            alignment = Alignment.TopCenter,
-            offsetY = 160.dp
+            title = "Find Your Craving",
+            description = "Try typing 'burger' to see what's cooking in the lagoon.",
+            alignment = Alignment.Center,
+            offsetY = 0.dp
         ),
         TutorialStep(
-            title = "Stall Details",
-            description = "The bottom sheet reveals everything you need: photos, food, and drinks.",
+            title = "Select a Stall",
+            description = "Tap on the first result to see more details about the stall.",
+            alignment = Alignment.Center,
+            offsetY = 0.dp
+        ),
+        TutorialStep(
+            title = "Explore More",
+            description = "Swipe up on the stall card to reveal the full menu and photos.",
+            alignment = Alignment.TopCenter,
+            offsetY = 10.dp
+        ),
+        TutorialStep(
+            title = "Keep it Clean",
+            description = "Swipe down or tap the map to minimize the stall details and get back to exploring.",
             alignment = Alignment.BottomCenter,
-            offsetY = (-120).dp
+            offsetY = (-10).dp
+        ),
+        TutorialStep(
+            title = "Find Your Way",
+            description = "Tap on 'Gate 1' to get instant directions from the entrance to this stall.",
+            alignment = Alignment.Center,
+            offsetY = 0.dp
+        ),
+        TutorialStep(
+            title = "Focus on Map",
+            description = "Minimize the directions guidance to have a better view of the path.",
+            alignment = Alignment.Center,
+            offsetY = 0.dp
+        ),
+        TutorialStep(
+            title = "Keep for Later",
+            description = "Tap the pin icon to 'keep' this stall marked on your map for future visits.",
+            alignment = Alignment.Center,
+            offsetY = 0.dp
+        ),
+        TutorialStep(
+            title = "You're All Set!",
+            description = "You've mastered the lagoon map. Happy food hunting!",
+            alignment = Alignment.Center,
+            offsetY = 0.dp
         )
     )
 
-    val currentStep = tutorialData[step]
+    val currentStep = tutorialData.getOrElse(step) { tutorialData.last() }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .clickable(enabled = false) {} // Prevent clicking elements behind
-    ) {
-        // Spotlight Overlay
-        val spotlightProgress by animateFloatAsState(
-            targetValue = if (targetBounds != null) 1f else 0f,
-            animationSpec = tween(500),
-            label = "spotlight_alpha"
-        )
-
-        Canvas(
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Layer 1: App Content with Blocker
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-        ) {
-            drawRect(color = Color.Black.copy(alpha = 0.7f * spotlightProgress))
-            
-            if (targetBounds != null) {
-                val center = targetBounds.center
-                val radius = (kotlin.math.max(targetBounds.width, targetBounds.height) / 2f) + 20.dp.toPx()
-                
-                drawCircle(
-                    color = Color.Transparent,
-                    radius = radius,
-                    center = center,
-                    blendMode = BlendMode.Clear
+                .then(
+                    if (isVisible) {
+                        Modifier.pointerInput(targetBounds, step) {
+                            awaitPointerEventScope {
+                                while (true) {
+                                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                                    val position = event.changes.first().position
+                                    
+                                    if (targetBounds != null) {
+                                        val center = targetBounds.center
+                                        val radius = (kotlin.math.max(targetBounds.width, targetBounds.height) / 2f) + 30.dp.toPx()
+                                        val distance = (position - center).getDistance()
+                                        
+                                        // If click is OUTSIDE the spotlight, consume it to block interaction
+                                        if (distance > radius) {
+                                            event.changes.forEach { it.consume() }
+                                        }
+                                        // If INSIDE, do nothing, allowing the event to reach the app below
+                                    } else if (step > 1 && step < 10 && step != 6) {
+                                        // Block everything if a target is expected but not yet found
+                                        // EXCEPT for step 6 (Step 7: Keep it Clean) which allows map/sheet interaction
+                                        event.changes.forEach { it.consume() }
+                                    }
+                                }
+                            }
+                        }
+                    } else Modifier
                 )
-            }
-        }
-
-        // Skip Button
-        val density = LocalDensity.current
-        val skipButtonModifier = if (searchBarBounds != null) {
-            val topPadding = with(density) { searchBarBounds.bottom.toDp() + 16.dp }
-            Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = topPadding, end = 16.dp)
-        } else {
-            Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 48.dp, end = 16.dp)
-        }
-
-        IconButton(
-            onClick = onSkip,
-            modifier = skipButtonModifier
         ) {
-            Icon(Icons.Default.Close, contentDescription = "Skip Tutorial", tint = Color.White)
+            content()
         }
 
-        // Tutorial Card
-        AnimatedContent(
-            targetState = currentStep,
-            transitionSpec = {
-                (fadeIn(animationSpec = tween(300, delayMillis = 150)) + 
-                 slideInVertically(initialOffsetY = { it / 2 }))
-                    .togetherWith(fadeOut(animationSpec = tween(150)))
-            },
-            modifier = Modifier
-                .align(currentStep.alignment)
-                .offset(y = currentStep.offsetY)
-                .padding(32.dp),
-            label = "tutorial_card"
-        ) { stepData ->
-            Surface(
+        // Layer 2: Tutorial Overlay
+        if (isVisible) {
+            // Spotlight Overlay Visuals
+            val spotlightProgress by animateFloatAsState(
+                targetValue = if (targetBounds != null) 1f else 0f,
+                animationSpec = tween(500),
+                label = "spotlight_alpha"
+            )
+
+            Canvas(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(24.dp))
-                    .shadow(12.dp),
-                color = Color.White,
-                shape = RoundedCornerShape(24.dp)
+                    .fillMaxSize()
+                    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
             ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "Step ${step + 1} of 4",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Maroon,
-                        fontWeight = FontWeight.Bold
+                // Dimming overlay
+                drawRect(color = Color.Black.copy(alpha = 0.5f * spotlightProgress))
+                
+                if (targetBounds != null) {
+                    val center = targetBounds.center
+                    val radius = (kotlin.math.max(targetBounds.width, targetBounds.height) / 2f) + 30.dp.toPx()
+                    
+                    // Clear the spotlight area
+                    drawCircle(
+                        color = Color.Transparent,
+                        radius = radius,
+                        center = center,
+                        blendMode = BlendMode.Clear
+                    )
+
+                    // High-contrast double border
+                    drawCircle(
+                        color = Color.White,
+                        radius = radius,
+                        center = center,
+                        style = Stroke(width = 4.dp.toPx())
                     )
                     
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = stepData.title,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Black
+                    drawCircle(
+                        color = Maroon,
+                        radius = radius + 2.dp.toPx(),
+                        center = center,
+                        style = Stroke(width = 2.dp.toPx())
                     )
+                }
+            }
 
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Text(
-                        text = stepData.description,
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Center,
-                        color = Color.DarkGray,
-                        lineHeight = 22.sp
-                    )
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    Button(
-                        onClick = onNext,
-                        colors = ButtonDefaults.buttonColors(containerColor = Maroon),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth().height(48.dp)
+            // Tutorial Instruction Card
+            AnimatedContent(
+                targetState = step,
+                transitionSpec = {
+                    (fadeIn(animationSpec = tween(300, delayMillis = 150)) + 
+                     slideInVertically(initialOffsetY = { if (it > 0) it / 2 else -it / 2 }))
+                        .togetherWith(fadeOut(animationSpec = tween(150)))
+                },
+                modifier = Modifier
+                    .align(currentStep.alignment)
+                    .offset(y = currentStep.offsetY)
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 24.dp),
+                label = "tutorial_card"
+            ) { stepIndex ->
+                val stepData = tutorialData.getOrElse(stepIndex) { tutorialData.last() }
+                
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 100.dp)
+                        .shadow(16.dp, RoundedCornerShape(20.dp)),
+                    color = Color.White,
+                    shape = RoundedCornerShape(20.dp),
+                    border = androidx.compose.foundation.BorderStroke(2.dp, Maroon.copy(alpha = 0.8f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = if (step < 3) "Next" else "Finish",
-                            fontWeight = FontWeight.Bold
-                        )
-                        if (step < 3) {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
+                        // Step Number Badge
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(Maroon, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "${stepIndex + 1}",
+                                color = Color.White,
+                                fontWeight = FontWeight.ExtraBold,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stepData.title,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Maroon
+                            )
+                            Text(
+                                text = stepData.description,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = Color.DarkGray,
+                                lineHeight = 20.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                        
+                        // Close Button
+                        IconButton(
+                            onClick = onSkip,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Skip Tutorial",
+                                tint = Color.Gray,
+                                modifier = Modifier.size(24.dp)
+                            )
                         }
                     }
                 }
             }
-        }
 
-        // Pulse animation for visual cue
-        if (targetBounds != null) {
-             PulseIndicator(
-                 Modifier
-                     .offset { targetBounds.center.round() }
-                     .size(100.dp)
-                     .offset(x = (-50).dp, y = (-50).dp)
-             )
+            // Pulse animation for visual cue when no target is specified
+            if (targetBounds == null && (step == 0 || step == 1)) {
+                 PulseIndicator(
+                     Modifier
+                         .align(Alignment.Center)
+                         .size(160.dp)
+                 )
+            }
         }
     }
 }
@@ -217,32 +290,31 @@ fun PulseIndicator(modifier: Modifier = Modifier) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val scale by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = 1.5f,
+        targetValue = 2.5f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1000),
-            repeatMode = RepeatMode.Reverse
+            animation = tween(1500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
         ),
         label = "scale"
     )
     val alpha by infiniteTransition.animateFloat(
-        initialValue = 0.5f,
+        initialValue = 0.7f,
         targetValue = 0f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1000),
-            repeatMode = RepeatMode.Reverse
+            animation = tween(1500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
         ),
         label = "alpha"
     )
 
     Box(
         modifier = modifier
-            .size(80.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
                 this.alpha = alpha
             }
-            .background(Maroon, CircleShape)
+            .background(Maroon.copy(alpha = 0.4f), CircleShape)
     )
 }
 
@@ -251,22 +323,14 @@ fun PulseIndicator(modifier: Modifier = Modifier) {
 fun FeatureTutorialPreview() {
     PuplagoonappTheme {
         Box(modifier = Modifier.fillMaxSize()) {
-            // Mock content behind the tutorial
-            Box(
-                modifier = Modifier
-                    .size(100.dp)
-                    .align(Alignment.TopCenter)
-                    .offset(y = 60.dp)
-                    .background(Color.Red)
-            )
-            
             FeatureTutorial(
                 step = 0,
                 targetBounds = Rect(offset = Offset(400f, 200f), size = Size(200f, 200f)),
-                searchBarBounds = Rect(offset = Offset(0f, 100f), size = Size(1080f, 150f)),
-                onNext = {},
-                onSkip = {}
-            )
+                onSkip = {},
+                isVisible = true
+            ) {
+                Box(modifier = Modifier.fillMaxSize().background(Color.White))
+            }
         }
     }
 }

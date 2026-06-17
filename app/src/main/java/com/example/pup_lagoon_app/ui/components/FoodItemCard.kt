@@ -24,9 +24,9 @@ import com.example.pup_lagoon_app.data.MergedRecords
 import com.example.pup_lagoon_app.ui.theme.Maroon
 
 @Composable
-fun FoodItemCard(record: MergedRecords, onClick: () -> Unit) {
+fun FoodItemCard(record: MergedRecords, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
             .clip(RoundedCornerShape(12.dp))

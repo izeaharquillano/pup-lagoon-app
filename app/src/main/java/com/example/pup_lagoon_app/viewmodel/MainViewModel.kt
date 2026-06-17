@@ -112,6 +112,22 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
         private set
 
     var searchBarBounds by mutableStateOf<Rect?>(null)
+        private set
+
+    var firstResultBounds by mutableStateOf<Rect?>(null)
+        private set
+
+    var sheetHandleBounds by mutableStateOf<Rect?>(null)
+        private set
+
+    var gate1Bounds by mutableStateOf<Rect?>(null)
+        private set
+
+    var minimizeGuidanceBounds by mutableStateOf<Rect?>(null)
+        private set
+
+    var keepButtonBounds by mutableStateOf<Rect?>(null)
+        private set
 
     var isMapLoading by mutableStateOf(true)
         private set
@@ -140,20 +156,68 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
     }
 
     fun nextTutorialStep() {
-        if (tutorialStep < 3) {
+        if (tutorialStep < 10) {
             tutorialStep++
-            tutorialTargetBounds = null // Reset for next step to trigger animation
+            tutorialTargetBounds = null // Reset for next step to trigger update
+            
+            // Auto-set target for some steps that might already have bounds
+            when (tutorialStep) {
+                2, 3 -> updateTutorialTarget(searchBarBounds)
+                4 -> updateTutorialTarget(firstResultBounds)
+                5 -> updateTutorialTarget(sheetHandleBounds)
+                7 -> updateTutorialTarget(gate1Bounds)
+                8 -> updateTutorialTarget(minimizeGuidanceBounds)
+                9 -> updateTutorialTarget(keepButtonBounds)
+            }
         } else {
             completeTutorial()
         }
     }
 
-    fun updateTutorialTarget(bounds: Rect) {
+    fun updateTutorialTarget(bounds: Rect?) {
         tutorialTargetBounds = bounds
     }
 
     fun updateSearchBarBounds(bounds: Rect) {
         searchBarBounds = bounds
+        if (showTutorial && (tutorialStep == 2 || tutorialStep == 3)) {
+            updateTutorialTarget(bounds)
+        }
+    }
+
+    fun updateFirstResultBounds(bounds: Rect) {
+        firstResultBounds = bounds
+        if (showTutorial && tutorialStep == 4) {
+            updateTutorialTarget(bounds)
+        }
+    }
+
+    fun updateSheetHandleBounds(bounds: Rect) {
+        sheetHandleBounds = bounds
+        if (showTutorial && tutorialStep == 5) {
+            updateTutorialTarget(bounds)
+        }
+    }
+
+    fun updateGate1Bounds(bounds: Rect) {
+        gate1Bounds = bounds
+        if (showTutorial && tutorialStep == 7) {
+            updateTutorialTarget(bounds)
+        }
+    }
+
+    fun updateMinimizeGuidanceBounds(bounds: Rect) {
+        minimizeGuidanceBounds = bounds
+        if (showTutorial && tutorialStep == 8) {
+            updateTutorialTarget(bounds)
+        }
+    }
+
+    fun updateKeepButtonBounds(bounds: Rect) {
+        keepButtonBounds = bounds
+        if (showTutorial && tutorialStep == 9) {
+            updateTutorialTarget(bounds)
+        }
     }
 
     fun completeTutorial() {

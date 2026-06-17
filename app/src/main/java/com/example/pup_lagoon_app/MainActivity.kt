@@ -1,5 +1,6 @@
 package com.example.pup_lagoon_app
 
+import androidx.compose.ui.focus.onFocusChanged
 import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -91,23 +92,20 @@ class MainActivity : ComponentActivity() {
                 if (viewModel.showOnboarding) {
                     OnboardingScreen(onComplete = { viewModel.completeOnboarding() })
                 } else {
-                    Box {
-                        MainScreen(viewModel)
-                        
-                        if (viewModel.showTutorial) {
-                            FeatureTutorial(
-                                step = viewModel.tutorialStep,
-                                targetBounds = viewModel.tutorialTargetBounds,
-                                searchBarBounds = viewModel.searchBarBounds,
-                                onNext = { viewModel.nextTutorialStep() },
-                                onSkip = { viewModel.completeTutorial() }
+                    FeatureTutorial(
+                        step = viewModel.tutorialStep,
+                        targetBounds = viewModel.tutorialTargetBounds,
+                        onSkip = { viewModel.completeTutorial() },
+                        isVisible = viewModel.showTutorial
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            MainScreen(viewModel)
+
+                            FullscreenImageViewer(
+                                imageUrl = viewModel.selectedFullscreenImage,
+                                onDismiss = { viewModel.selectedFullscreenImage = null }
                             )
                         }
-
-                        FullscreenImageViewer(
-                            imageUrl = viewModel.selectedFullscreenImage,
-                            onDismiss = { viewModel.selectedFullscreenImage = null }
-                        )
                     }
                 }
             }
@@ -180,6 +178,15 @@ fun MainScreen(viewModel: MainViewModel) {
                 if (anchoredDraggableState.currentValue != SheetStage.Minimized) {
                     viewModel.lastActiveStage = anchoredDraggableState.currentValue
                 }
+                
+                // Tutorial Progression
+                if (viewModel.showTutorial) {
+                    if (viewModel.tutorialStep == 5 && anchoredDraggableState.currentValue == SheetStage.Full) {
+                        viewModel.nextTutorialStep()
+                    } else if (viewModel.tutorialStep == 6 && anchoredDraggableState.currentValue == SheetStage.Minimized) {
+                        viewModel.nextTutorialStep()
+                    }
+                }
             }
 
             val flingBehavior = AnchoredDraggableDefaults.flingBehavior(
@@ -239,12 +246,7 @@ private fun MapLayer(
     Box(modifier = Modifier.fillMaxSize()) {
         ZoomableBox(
             modifier = Modifier
-                .fillMaxSize()
-                .onGloballyPositioned { coords ->
-                    if (viewModel.showTutorial && viewModel.tutorialStep == 1 || viewModel.tutorialStep == 2) {
-                        viewModel.updateTutorialTarget(coords.boundsInRoot())
-                    }
-                },
+                .fillMaxSize(),
             contentAspectRatio = if (mapSize.width > 0) mapSize.width / mapSize.height else 1f,
             initialScale = 1.3f,
             initialCenterPixel = Offset(1787f, 1272f),
@@ -264,6 +266,20 @@ private fun MapLayer(
             onLandmarkClick = { landmarkId ->
                 if (viewModel.selectedStallId != null) {
                     viewModel.updateRoute(landmarkId)
+                    if (viewModel.showTutorial && viewModel.tutorialStep == 7 && landmarkId == "L05") { // Gate 1
+                        viewModel.nextTutorialStep()
+                    }
+                }
+            },
+            onGate1Positioned = { viewModel.updateGate1Bounds(it) },
+            onPan = {
+                if (viewModel.showTutorial && viewModel.tutorialStep == 0) {
+                    viewModel.nextTutorialStep()
+                }
+            },
+            onZoom = {
+                if (viewModel.showTutorial && viewModel.tutorialStep == 1) {
+                    viewModel.nextTutorialStep()
                 }
             },
             onInteraction = {
@@ -327,9 +343,6 @@ private fun SearchLayer(viewModel: MainViewModel) {
             .shadow(4.dp, RoundedCornerShape(28.dp))
             .onGloballyPositioned { coords ->
                 viewModel.updateSearchBarBounds(coords.boundsInRoot())
-                if (viewModel.showTutorial && viewModel.tutorialStep == 0) {
-                    viewModel.updateTutorialTarget(coords.boundsInRoot())
-                }
             },
         color = Color.White,
         shape = RoundedCornerShape(28.dp)
@@ -343,7 +356,12 @@ private fun SearchLayer(viewModel: MainViewModel) {
             ) {
                 OutlinedTextField(
                     value = searchQuery,
-                    onValueChange = { viewModel.onSearchQueryChange(it) },
+                    onValueChange = { 
+                        viewModel.onSearchQueryChange(it)
+                        if (viewModel.showTutorial && viewModel.tutorialStep == 3 && it.contains("burger", ignoreCase = true)) {
+                            viewModel.nextTutorialStep()
+                        }
+                    },
                     placeholder = { 
                         Text(
                             "Search food or stall",
@@ -351,7 +369,13 @@ private fun SearchLayer(viewModel: MainViewModel) {
                             overflow = TextOverflow.Ellipsis
                         ) 
                     },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .onFocusChanged { focusState ->
+                            if (focusState.isFocused && viewModel.showTutorial && viewModel.tutorialStep == 2) {
+                                viewModel.nextTutorialStep()
+                            }
+                        },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     keyboardActions = KeyboardActions(onSearch = { viewModel.performManualSearch() }),
@@ -463,7 +487,20 @@ private fun SearchLayer(viewModel: MainViewModel) {
                                 key = { it.id },
                                 contentType = { "food_card" }
                             ) { record ->
-                                FoodItemCard(record, onClick = { viewModel.selectResult(record) })
+                                FoodItemCard(
+                                    record, 
+                                    onClick = { 
+                                        viewModel.selectResult(record) 
+                                        if (viewModel.showTutorial && viewModel.tutorialStep == 4) {
+                                            viewModel.nextTutorialStep()
+                                        }
+                                    },
+                                    modifier = Modifier.onGloballyPositioned { coords ->
+                                        if (searchResults.indexOf(record) == 0) {
+                                            viewModel.updateFirstResultBounds(coords.boundsInRoot())
+                                        }
+                                    }
+                                )
                             }
                         }
                     }
@@ -529,8 +566,17 @@ private fun GuidanceLayer(viewModel: MainViewModel) {
                         Spacer(modifier = Modifier.weight(1f))
                         
                         IconButton(
-                            onClick = { viewModel.isGuidanceMinimized = true },
-                            modifier = Modifier.size(24.dp)
+                            onClick = { 
+                                viewModel.isGuidanceMinimized = true 
+                                if (viewModel.showTutorial && viewModel.tutorialStep == 8) {
+                                    viewModel.nextTutorialStep()
+                                }
+                            },
+                            modifier = Modifier
+                                .size(24.dp)
+                                .onGloballyPositioned { coords ->
+                                    viewModel.updateMinimizeGuidanceBounds(coords.boundsInRoot())
+                                }
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Remove,
@@ -646,9 +692,7 @@ private fun BottomSheetLayer(
                     .fillMaxWidth()
                     .padding(vertical = 4.dp)
                     .onGloballyPositioned { coords ->
-                        if (viewModel.showTutorial && viewModel.tutorialStep == 3) {
-                            viewModel.updateTutorialTarget(coords.boundsInRoot())
-                        }
+                        viewModel.updateSheetHandleBounds(coords.boundsInRoot())
                     },
                 contentAlignment = Alignment.Center
             ) {
@@ -670,7 +714,13 @@ private fun BottomSheetLayer(
                 onImageClick = { viewModel.selectedFullscreenImage = it },
                 progressProvider = sheetProgressProvider,
                 isKept = viewModel.isCurrentStallKept,
-                onToggleKeep = { viewModel.toggleKeepStall(viewModel.selectedStallId ?: "") }
+                onToggleKeep = { 
+                    viewModel.toggleKeepStall(viewModel.selectedStallId ?: "") 
+                    if (viewModel.showTutorial && viewModel.tutorialStep == 9) {
+                        viewModel.nextTutorialStep()
+                    }
+                },
+                onKeepPositioned = { viewModel.updateKeepButtonBounds(it) }
             )
         }
     }

@@ -27,6 +27,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.DoorSliding
@@ -128,6 +130,9 @@ fun ZoomableBox(
     selectedGateId: String? = null,
     onPinClick: ((String) -> Unit)? = null,
     onLandmarkClick: ((String) -> Unit)? = null,
+    onGate1Positioned: ((Rect) -> Unit)? = null,
+    onPan: (() -> Unit)? = null,
+    onZoom: (() -> Unit)? = null,
     onClick: (() -> Unit)? = null,
     onInteraction: (() -> Unit)? = null,
     allStallLocations: Map<String, Offset> = emptyMap(),
@@ -243,6 +248,9 @@ fun ZoomableBox(
                                     val centroid = event.calculateCentroid()
 
                                     if (zoom != 1f || pan != Offset.Zero) {
+                                        if (zoom != 1f) onZoom?.invoke()
+                                        if (pan != Offset.Zero) onPan?.invoke()
+
                                         val oldScale = scaleAnimatable.value
                                         val newScale = (oldScale * zoom).coerceIn(minScale, maxScale)
                                         
@@ -695,6 +703,11 @@ fun ZoomableBox(
                                         Box(
                                             contentAlignment = Alignment.Center,
                                             modifier = Modifier
+                                                .onGloballyPositioned { coords ->
+                                                    if (label.text == "Gate 1") {
+                                                        onGate1Positioned?.invoke(coords.boundsInRoot())
+                                                    }
+                                                }
                                                 .pointerInput(label.id) {
                                                     awaitEachGesture {
                                                         val down = awaitFirstDown(requireUnconsumed = false)

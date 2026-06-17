@@ -1,5 +1,8 @@
 package com.example.pup_lagoon_app.ui.components
 
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -72,7 +75,8 @@ fun StallBottomSheetContent(
     onImageClick: (String) -> Unit = {},
     progressProvider: () -> Float = { 0.5f }, // 0f = Minimized, 0.5f = Halfway, 1f = Full
     isKept: Boolean = false,
-    onToggleKeep: (Boolean) -> Unit = {}
+    onToggleKeep: (Boolean) -> Unit = {},
+    onKeepPositioned: (Rect) -> Unit = {}
 ) {
     val foodListState = rememberLazyListState()
 
@@ -202,6 +206,9 @@ fun StallBottomSheetContent(
                 onClick = { onToggleKeep(!isKept) },
                 modifier = Modifier
                     .size(48.dp)
+                    .onGloballyPositioned { coords ->
+                        onKeepPositioned(coords.boundsInRoot())
+                    }
             ) {
                 Icon(
                     imageVector = if (isKept) Icons.Filled.PushPin else Icons.Outlined.PushPin,
