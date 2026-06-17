@@ -116,10 +116,17 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
     var isMapLoading by mutableStateOf(true)
         private set
 
+    var keptStallIds by mutableStateOf(setOf<String>())
+        private set
+
     init {
         val sharedPrefs = repository.getSharedPreferences()
         showOnboarding = !sharedPrefs.getBoolean("onboarding_completed", false)
         showTutorial = !sharedPrefs.getBoolean("tutorial_completed", false) && !showOnboarding
+        
+        // Load kept pins
+        val savedKeptIds = sharedPrefs.getStringSet("kept_stall_ids", emptySet()) ?: emptySet()
+        keptStallIds = savedKeptIds
     }
 
     fun completeOnboarding() {
@@ -153,9 +160,6 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
         showTutorial = false
         repository.getSharedPreferences().edit().putBoolean("tutorial_completed", true).apply()
     }
-
-    var keptStallIds by mutableStateOf(setOf<String>())
-        private set
 
     val isCurrentStallKept: Boolean by derivedStateOf {
         selectedStallId?.let { it in keptStallIds } ?: false
@@ -274,7 +278,6 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
 
     fun toggleKeepStall(stallId: String) {
         val idsToToggle = setOf(stallId)
-        
         val anyInKept = idsToToggle.any { it in keptStallIds }
         
         keptStallIds = if (anyInKept) {
@@ -282,6 +285,11 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
         } else {
             keptStallIds + idsToToggle
         }
+        
+        // Save to SharedPreferences
+        repository.getSharedPreferences().edit()
+            .putStringSet("kept_stall_ids", keptStallIds)
+            .apply()
     }
 
     fun selectStallById(stallId: String) {

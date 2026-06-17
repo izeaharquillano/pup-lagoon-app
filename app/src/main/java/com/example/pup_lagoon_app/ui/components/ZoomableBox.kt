@@ -301,8 +301,9 @@ fun ZoomableBox(
                                         val halfHeightVisible = containerHeightPx / (2f * s)
                                         val margin = 50f * density / s
 
-                                        val isVisible = s > 2.1f &&
-                                                        abs(iconXRelCenter - off.x) < halfWidthVisible + margin &&
+                                        // Progressive Disclosure:
+                                        // Dots are always "present", full icons show after 2.1f
+                                        val isVisible = abs(iconXRelCenter - off.x) < halfWidthVisible + margin &&
                                                         abs(iconYRelCenter - off.y) < halfHeightVisible + margin
                                         
                                         alpha = if (isVisible) 1f else 0f
@@ -310,6 +311,11 @@ fun ZoomableBox(
                                         scaleX = 1f / s
                                         scaleY = 1f / s
                                         translationX = iconX - (40.dp.toPx() / 2f)
+                                        
+                                        // The container is 60dp high.
+                                        // The circle icon is 24dp high and at the BOTTOM of the container.
+                                        // The center of the circle is at 12dp from the bottom.
+                                        // To center that circle on 'iconY', we need to offset by (60 - 12) = 48dp.
                                         translationY = iconY - (60.dp.toPx())
                                     }
                                     .size(width = 40.dp, height = 60.dp)
@@ -324,11 +330,11 @@ fun ZoomableBox(
                                                 val halfHeightVisible = containerHeightPx / (2f * s)
                                                 val margin = 50f * density / s
 
-                                                val isVisible = s > 2.1f &&
-                                                                abs(iconXRelCenter - off.x) < halfWidthVisible + margin &&
+                                                val isVisible = abs(iconXRelCenter - off.x) < halfWidthVisible + margin &&
                                                                 abs(iconYRelCenter - off.y) < halfHeightVisible + margin
 
-                                                if (isVisible) {
+                                                // Only allow click if zoomed in enough to see what it is
+                                                if (isVisible && s > 2.0f) {
                                                     up.consume()
                                                     onPinClick?.invoke(id)
                                                 }
@@ -336,11 +342,17 @@ fun ZoomableBox(
                                         }
                                     }
                             ) {
+                                // Full Icon (Visible when zoomed in)
                                 Column(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .graphicsLayer {
+                                            alpha = if (currentScaleProvider() > 2.1f) 1f else 0f
+                                        },
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.Bottom
                                 ) {
-                                    // Stall Number (Similar to Gate text)
+                                    // Stall Number
                                     Surface(
                                         color = Color.White.copy(alpha = 0.8f),
                                         shape = RoundedCornerShape(4.dp),
@@ -372,6 +384,22 @@ fun ZoomableBox(
                                         )
                                     }
                                 }
+
+                                // Simple Dot (Visible when zoomed out)
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomCenter)
+                                        .graphicsLayer {
+                                            val s = currentScaleProvider()
+                                            alpha = if (s <= 2.1f) 1f else 0f
+                                            
+                                            val dotScale = (1.5f / s).coerceIn(1f, 2f)
+                                            scaleX = dotScale
+                                            scaleY = dotScale
+                                        }
+                                        .size(8.dp)
+                                        .background(Maroon, CircleShape)
+                                )
                             }
                         }
                     }
@@ -615,9 +643,9 @@ fun ZoomableBox(
                                                 modifier = Modifier
                                                     .graphicsLayer {
                                                         // Move text above the center (coordinate)
-                                                        // Base: -24dp (icon height) - 4dp (padding) = -28dp
-                                                        // Selection: Shift up to clear expanded icon (32dp + 8dp = 40dp)
-                                                        translationY = if (isSelected) -40.dp.toPx() else -28.dp.toPx()
+                                                        // Base: Adjusted to -22dp for consistency with stall icons
+                                                        // Selection: Adjusted to -30dp to clear expanded icon while maintaining close spacing
+                                                        translationY = if (isSelected) -30.dp.toPx() else -22.dp.toPx()
                                                     }
                                             ) {
                                                 Text(

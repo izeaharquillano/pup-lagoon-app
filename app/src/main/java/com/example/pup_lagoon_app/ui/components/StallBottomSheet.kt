@@ -88,7 +88,8 @@ fun StallBottomSheetContent(
                 .fillMaxWidth()
                 .layout { measurable, constraints ->
                     val p = progressProvider()
-                    val normP = (p / 0.5f).coerceIn(0f, 1f)
+                    // Reaches full expansion at 0.4f progress (matching Halfway anchor)
+                    val normP = (p / 0.4f).coerceIn(0f, 1f)
                     val height = lerp(48.dp, 64.dp, normP).roundToPx()
                     val placeable = measurable.measure(
                         constraints.copy(minHeight = height, maxHeight = height)
@@ -107,7 +108,7 @@ fun StallBottomSheetContent(
                 modifier = Modifier
                     .graphicsLayer {
                         val p = progressProvider()
-                        val normP = (p / 0.5f).coerceIn(0f, 1f)
+                        val normP = (p / 0.4f).coerceIn(0f, 1f)
                         alpha = normP
                         val scale = 0.75f + (0.25f * normP)
                         scaleX = scale * normP
@@ -122,7 +123,7 @@ fun StallBottomSheetContent(
                     .width(12.dp)
                     .graphicsLayer {
                         val p = progressProvider()
-                        val normP = (p / 0.5f).coerceIn(0f, 1f)
+                        val normP = (p / 0.4f).coerceIn(0f, 1f)
                         alpha = normP
                     }
             )
@@ -132,7 +133,7 @@ fun StallBottomSheetContent(
                     .weight(1f)
                     .graphicsLayer {
                         val p = progressProvider()
-                        val normP = (p / 0.5f).coerceIn(0f, 1f)
+                        val normP = (p / 0.4f).coerceIn(0f, 1f)
                         // Push up slightly as we expand to balance visual center with subtitle
                         val upwardShift = 10.dp.toPx()
                         translationY = -upwardShift * normP
@@ -147,7 +148,7 @@ fun StallBottomSheetContent(
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.graphicsLayer {
-                        val p = (progressProvider() / 0.5f).coerceIn(0f, 1f)
+                        val p = (progressProvider() / 0.4f).coerceIn(0f, 1f)
                         val scale = 0.85f + (0.15f * p)
                         scaleX = scale
                         scaleY = scale
@@ -219,7 +220,7 @@ fun StallBottomSheetContent(
                     contentDescription = "Close",
                     tint = Color.Gray,
                     modifier = Modifier.graphicsLayer {
-                        val p = (progressProvider() / 0.5f).coerceIn(0f, 1f)
+                        val p = (progressProvider() / 0.4f).coerceIn(0f, 1f)
                         val scale = 0.8f + (0.2f * p)
                         scaleX = scale
                         scaleY = scale
@@ -236,7 +237,8 @@ fun StallBottomSheetContent(
                 .weight(1f)
                 .graphicsLayer { 
                     val p = progressProvider()
-                    alpha = ((p - 0.15f) / 0.35f).coerceIn(0f, 1f)
+                    // Reaches full opacity at 0.4f progress (Halfway anchor)
+                    alpha = ((p - 0.15f) / 0.25f).coerceIn(0f, 1f)
                     translationY = 30f * (1f - alpha)
                 }
         ) {
