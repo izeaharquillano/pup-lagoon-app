@@ -565,3 +565,5 @@ stall_id,stall_name,food_id,food_name,food_price,food_categories
 27,Varda,564,Potato Crisp,₱25.00,Snack
 27,Varda,565,Choco Chip Bun ,₱50.00,Snack
 27,Varda,566,Mini Crinkles (6 pcs),₱50.00,Snack
+14,Rewandas Eatery,567,Water Refilling Station,₱5.00,Beverages
+14,Flavors of Lagoon,568,Water Refilling Station,₱5.00,Beverages

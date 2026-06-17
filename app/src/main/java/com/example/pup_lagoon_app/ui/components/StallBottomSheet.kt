@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -72,7 +74,7 @@ fun StallBottomSheetContent(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     stallImages: List<String> = emptyList(),
-    onImageClick: (String) -> Unit = {},
+    onImageClick: (Int) -> Unit = {},
     progressProvider: () -> Float = { 0.5f }, // 0f = Minimized, 0.5f = Halfway, 1f = Full
     isKept: Boolean = false,
     onToggleKeep: (Boolean) -> Unit = {},
@@ -261,7 +263,7 @@ fun StallBottomSheetContent(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 LazyRow {
-                    items(stallImages) { imageUrl ->
+                    itemsIndexed(stallImages) { index, imageUrl ->
                         AsyncImage(
                             model = ImageRequest.Builder(LocalContext.current)
                                     .data(imageUrl)
@@ -273,7 +275,7 @@ fun StallBottomSheetContent(
                                     .padding(end = 8.dp)
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(Color.LightGray.copy(alpha = 0.3f))
-                                    .clickable { onImageClick(imageUrl) },
+                                    .clickable { onImageClick(index) },
                             contentScale = ContentScale.Crop
                         )
                     }
@@ -293,8 +295,8 @@ fun StallBottomSheetContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .padding(bottom = 16.dp)
-                    .scrollbar(foodListState, autoHide = true)
+                    .scrollbar(foodListState, autoHide = true),
+                contentPadding = PaddingValues(bottom = 64.dp)
             ) {
                 items(
                     items = foods,

@@ -102,7 +102,10 @@ class MainActivity : ComponentActivity() {
                             MainScreen(viewModel)
 
                             FullscreenImageViewer(
-                                imageUrl = viewModel.selectedFullscreenImage,
+                                images = viewModel.selectedStallImages,
+                                currentIndex = viewModel.fullscreenImageIndex,
+                                onIndexChange = { viewModel.fullscreenImageIndex = it },
+                                isVisible = viewModel.selectedFullscreenImage != null,
                                 onDismiss = { viewModel.selectedFullscreenImage = null }
                             )
                         }
@@ -711,7 +714,10 @@ private fun BottomSheetLayer(
                 onDismiss = { viewModel.clearSelection() },
                 modifier = Modifier.weight(1f),
                 stallImages = viewModel.selectedStallImages,
-                onImageClick = { viewModel.selectedFullscreenImage = it },
+                onImageClick = { index -> 
+                    viewModel.fullscreenImageIndex = index
+                    viewModel.selectedFullscreenImage = viewModel.selectedStallImages.getOrNull(index)
+                },
                 progressProvider = sheetProgressProvider,
                 isKept = viewModel.isCurrentStallKept,
                 onToggleKeep = { 

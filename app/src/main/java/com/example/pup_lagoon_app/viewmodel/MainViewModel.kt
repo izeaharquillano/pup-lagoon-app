@@ -79,6 +79,8 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
     
     var selectedFullscreenImage by mutableStateOf<String?>(null)
 
+    var fullscreenImageIndex by mutableStateOf(0)
+
     var showBottomSheet by mutableStateOf(false)
 
     var navigationPath by mutableStateOf<List<Offset>>(emptyList())
@@ -411,6 +413,7 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
         selectedStallName = null
         selectedStallImages = emptyList()
         selectedFullscreenImage = null
+        fullscreenImageIndex = 0
         showBottomSheet = false
         navigationPath = emptyList()
         guidanceText = null
