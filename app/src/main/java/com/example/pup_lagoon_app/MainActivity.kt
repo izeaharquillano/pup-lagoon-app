@@ -364,7 +364,7 @@ private fun SearchLayer(viewModel: MainViewModel) {
                     },
                     placeholder = { 
                         Text(
-                            "Search food or stall",
+                            "Search food items",
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         ) 

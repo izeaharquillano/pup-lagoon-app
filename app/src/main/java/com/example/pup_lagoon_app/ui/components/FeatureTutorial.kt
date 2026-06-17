@@ -55,7 +55,7 @@ fun FeatureTutorial(
         ),
         TutorialStep(
             title = "Quick Search",
-            description = "Tap the search bar to find specific food items or your favorite stalls.",
+            description = "Tap the search bar to find specific food items.",
             alignment = Alignment.Center,
             offsetY = 0.dp
         ),
