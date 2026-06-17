@@ -86,14 +86,14 @@ fun FeatureTutorial(
         TutorialStep(
             title = "Find Your Way",
             description = "Tap on 'Gate 1' to get instant directions from the entrance to this stall.",
-            alignment = Alignment.Center,
-            offsetY = 0.dp
+            alignment = Alignment.BottomCenter,
+            offsetY = (-24).dp
         ),
         TutorialStep(
             title = "Focus on Map",
             description = "Minimize the directions guidance to have a better view of the path.",
-            alignment = Alignment.Center,
-            offsetY = 0.dp
+            alignment = Alignment.BottomCenter,
+            offsetY = (-24).dp
         ),
         TutorialStep(
             title = "Keep for Later",
