@@ -9,29 +9,25 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.DoorSliding
-import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -40,14 +36,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
@@ -124,6 +118,11 @@ fun ZoomableBox(
                 containerWidth to (containerWidth / safeContentAspectRatio)
             }
 
+            val baseWidthPx = baseWidth * density
+            val baseHeightPx = baseHeight * density
+            val containerWidthPx = containerWidth * density
+            val containerHeightPx = containerHeight * density
+
             // Calculation helper
             fun calculateBoundOffset(targetPixel: Offset, fullSize: IntSize): Offset {
                 val fullWidth = fullSize.width.toFloat()
@@ -132,13 +131,8 @@ fun ZoomableBox(
                 val normalizedX = targetPixel.x / fullWidth
                 val normalizedY = targetPixel.y / fullHeight
 
-                val targetBaseX = (normalizedX - 0.5f) * baseWidth * density
-                val targetBaseY = (normalizedY - 0.5f) * baseHeight * density
-
-                val baseWidthPx = baseWidth * density
-                val baseHeightPx = baseHeight * density
-                val containerWidthPx = containerWidth * density
-                val containerHeightPx = containerHeight * density
+                val targetBaseX = (normalizedX - 0.5f) * baseWidthPx
+                val targetBaseY = (normalizedY - 0.5f) * baseHeightPx
 
                 val currentScale = scaleAnimatable.value
                 val maxX = (baseWidthPx * currentScale - containerWidthPx).coerceAtLeast(0f) / (2f * currentScale)
@@ -176,9 +170,14 @@ fun ZoomableBox(
                     .requiredSize(width = baseWidth.dp, height = baseHeight.dp)
                     .pointerInput(isLoading) {
                         if (!isLoading) {
-                            detectTapGestures(
-                                onTap = { onClick?.invoke() }
-                            )
+                            awaitEachGesture {
+                                val down = awaitFirstDown(requireUnconsumed = false)
+                                val up = waitForUpOrCancellation()
+                                if (up != null) {
+                                    up.consume()
+                                    onClick?.invoke()
+                                }
+                            }
                         }
                     }
                     .pointerInput(isLoading) {
@@ -196,9 +195,6 @@ fun ZoomableBox(
                                         val oldScale = scaleAnimatable.value
                                         val newScale = (oldScale * zoom).coerceIn(minScale, maxScale)
                                         
-                                        val baseWidthPx = baseWidth * density
-                                        val baseHeightPx = baseHeight * density
-                                        
                                         val relativeCentroid = Offset(
                                             centroid.x - baseWidthPx / 2f,
                                             centroid.y - baseHeightPx / 2f
@@ -207,9 +203,6 @@ fun ZoomableBox(
                                         val currentOffset = offsetAnimatable.value
                                         val newOffset = (currentOffset + relativeCentroid / oldScale) - 
                                                     (relativeCentroid / newScale + pan / oldScale)
-
-                                        val containerWidthPx = containerWidth * density
-                                        val containerHeightPx = containerHeight * density
 
                                         val currentScaleValue = scaleAnimatable.value
                                         val maxX = (baseWidthPx * currentScaleValue - containerWidthPx).coerceAtLeast(0f) / (2f * currentScaleValue)
@@ -248,9 +241,6 @@ fun ZoomableBox(
                     val fullWidth = contentFullSize.width.toFloat()
                     val fullHeight = contentFullSize.height.toFloat()
 
-                    val baseWidthPx = baseWidth * density
-                    val baseHeightPx = baseHeight * density
-
                     // Pre-map the raw normalized points to avoid allocation in draw phase
                     val normalizedPath = remember(navigationPath, fullWidth, fullHeight) {
                         navigationPath.map { point ->
@@ -260,22 +250,15 @@ fun ZoomableBox(
 
                     Canvas(modifier = Modifier.fillMaxSize()) {
                         val s = currentScaleProvider()
-                        val pathPoints = normalizedPath.map { point ->
-                            Offset(
-                                point.x * baseWidthPx,
-                                // Offset Y upwards slightly (2dp) to meet the visual tip of the LocationOn icon
-                                point.y * baseHeightPx - (2.dp.toPx() / s)
-                            )
+                        
+                        val path = androidx.compose.ui.graphics.Path()
+                        normalizedPath.forEachIndexed { i, point ->
+                            val px = point.x * baseWidthPx
+                            val py = point.y * baseHeightPx - (2.dp.toPx() / s)
+                            if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
                         }
 
-                        if (pathPoints.size >= 2) {
-                            val path = androidx.compose.ui.graphics.Path().apply {
-                                moveTo(pathPoints[0].x, pathPoints[0].y)
-                                for (i in 1 until pathPoints.size) {
-                                    lineTo(pathPoints[i].x, pathPoints[i].y)
-                                }
-                            }
-
+                        if (normalizedPath.size >= 2) {
                             drawPath(
                                 path = path,
                                 color = Color.Red,
@@ -297,11 +280,6 @@ fun ZoomableBox(
                 if (showMapElements && contentFullSize != null) {
                     val fullWidth = contentFullSize.width.toFloat()
                     val fullHeight = contentFullSize.height.toFloat()
-
-                    val baseWidthPx = baseWidth * density
-                    val baseHeightPx = baseHeight * density
-                    val containerWidthPx = containerWidth * density
-                    val containerHeightPx = containerHeight * density
 
                     allStallLocations.forEach { (id, location) ->
                         // Only show if NOT currently selected or kept (to avoid overlap with pins)
@@ -335,6 +313,28 @@ fun ZoomableBox(
                                         translationY = iconY - (60.dp.toPx())
                                     }
                                     .size(width = 40.dp, height = 60.dp)
+                                    .pointerInput(id) {
+                                        awaitEachGesture {
+                                            val down = awaitFirstDown(requireUnconsumed = false)
+                                            val up = waitForUpOrCancellation()
+                                            if (up != null) {
+                                                val s = currentScaleProvider()
+                                                val off = currentOffsetProvider()
+                                                val halfWidthVisible = containerWidthPx / (2f * s)
+                                                val halfHeightVisible = containerHeightPx / (2f * s)
+                                                val margin = 50f * density / s
+
+                                                val isVisible = s > 2.1f &&
+                                                                abs(iconXRelCenter - off.x) < halfWidthVisible + margin &&
+                                                                abs(iconYRelCenter - off.y) < halfHeightVisible + margin
+
+                                                if (isVisible) {
+                                                    up.consume()
+                                                    onPinClick?.invoke(id)
+                                                }
+                                            }
+                                        }
+                                    }
                             ) {
                                 Column(
                                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -363,15 +363,6 @@ fun ZoomableBox(
                                         modifier = Modifier
                                             .size(24.dp)
                                             .background(Maroon, CircleShape)
-                                            .then(
-                                                if (currentScaleProvider() > 2.1f) {
-                                                    Modifier.pointerInput(id) {
-                                                        detectTapGestures {
-                                                            onPinClick?.invoke(id)
-                                                        }
-                                                    }
-                                                } else Modifier
-                                            )
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.Storefront,
@@ -391,11 +382,6 @@ fun ZoomableBox(
                     val fullWidth = contentFullSize.width.toFloat()
                     val fullHeight = contentFullSize.height.toFloat()
                     
-                    val baseWidthPx = baseWidth * density
-                    val baseHeightPx = baseHeight * density
-                    val containerWidthPx = containerWidth * density
-                    val containerHeightPx = containerHeight * density
-
                     keptPins.forEach { (id, location) ->
                         // Skip if it's one of the currently selected stalls
                         if (id !in selectedStallIds) {
@@ -426,27 +412,26 @@ fun ZoomableBox(
                                         translationX = pinX - 22.dp.toPx()
                                         translationY = pinY - 44.dp.toPx()
                                     }
-                                    .then(
-                                        // Only add pointerInput if it's actually visible to avoid blocking gestures
-                                        // Note: We use a small margin check consistent with graphicsLayer visibility
-                                        run {
-                                            val s = currentScaleProvider()
-                                            val off = currentOffsetProvider()
-                                            val halfWidthVisible = containerWidthPx / (2f * s)
-                                            val halfHeightVisible = containerHeightPx / (2f * s)
-                                            val margin = 60f * density / s
-                                            val isVisible = abs(xRel - off.x) < halfWidthVisible + margin &&
-                                                            abs(yRel - off.y) < halfHeightVisible + margin
-                                            
-                                            if (isVisible) {
-                                                Modifier.pointerInput(id) {
-                                                    detectTapGestures {
-                                                        onPinClick?.invoke(id)
-                                                    }
+                                    .pointerInput(id) {
+                                        awaitEachGesture {
+                                            val down = awaitFirstDown(requireUnconsumed = false)
+                                            val up = waitForUpOrCancellation()
+                                            if (up != null) {
+                                                val s = currentScaleProvider()
+                                                val off = currentOffsetProvider()
+                                                val halfWidthVisible = containerWidthPx / (2f * s)
+                                                val halfHeightVisible = containerHeightPx / (2f * s)
+                                                val margin = 60f * density / s
+                                                val isVisible = abs(xRel - off.x) < halfWidthVisible + margin &&
+                                                                abs(yRel - off.y) < halfHeightVisible + margin
+                                                
+                                                if (isVisible) {
+                                                    up.consume()
+                                                    onPinClick?.invoke(id)
                                                 }
-                                            } else Modifier
+                                            }
                                         }
-                                    )
+                                    }
                             ) {
                                 // White filler for the head of the pin
                                 Box(
@@ -476,8 +461,8 @@ fun ZoomableBox(
                     val fullHeight = contentFullSize.height.toFloat()
 
                     selectedStallLocations.forEach { (id, location) ->
-                        val pinX = (location.x / fullWidth) * baseWidth * density
-                        val pinY = (location.y / fullHeight) * baseHeight * density
+                        val pinX = (location.x / fullWidth) * baseWidthPx
+                        val pinY = (location.y / fullHeight) * baseHeightPx
 
                         Box(
                             contentAlignment = Alignment.Center,
@@ -509,8 +494,13 @@ fun ZoomableBox(
                                 modifier = Modifier
                                     .size(54.dp)
                                     .pointerInput(id) {
-                                        detectTapGestures {
-                                            onPinClick?.invoke(id)
+                                        awaitEachGesture {
+                                            val down = awaitFirstDown(requireUnconsumed = false)
+                                            val up = waitForUpOrCancellation()
+                                            if (up != null) {
+                                                up.consume()
+                                                onPinClick?.invoke(id)
+                                            }
                                         }
                                     }
                             )
@@ -518,11 +508,6 @@ fun ZoomableBox(
                     }
 
                     // Render Map Labels
-                    val baseWidthPx = baseWidth * density
-                    val baseHeightPx = baseHeight * density
-                    val containerWidthPx = containerWidth * density
-                    val containerHeightPx = containerHeight * density
-
                     mapLabels.forEach { label ->
                         val labelX = (label.pixelX / fullWidth) * baseWidthPx
                         val labelY = (label.pixelY / fullHeight) * baseHeightPx
@@ -550,25 +535,28 @@ fun ZoomableBox(
                                     translationX = labelX - (100.dp.toPx() / 2f)
                                     translationY = labelY - (50.dp.toPx() / 2f)
                                 }
-                                .then(
-                                    if (label.type == LabelType.LANDMARK) {
-                                        val s = currentScaleProvider()
-                                        val off = currentOffsetProvider()
-                                        val halfWidthVisible = containerWidthPx / (2f * s)
-                                        val halfHeightVisible = containerHeightPx / (2f * s)
-                                        val margin = 100f * density / s
-                                        val isVisible = abs(xRel - off.x) < halfWidthVisible + margin &&
-                                                        abs(yRel - off.y) < halfHeightVisible + margin
-                                        
-                                        if (isVisible) {
-                                            Modifier.pointerInput(label.id) {
-                                                detectTapGestures {
+                                .pointerInput(label.id) {
+                                    awaitEachGesture {
+                                        val down = awaitFirstDown(requireUnconsumed = false)
+                                        val up = waitForUpOrCancellation()
+                                        if (up != null) {
+                                            if (label.type == LabelType.LANDMARK) {
+                                                val s = currentScaleProvider()
+                                                val off = currentOffsetProvider()
+                                                val halfWidthVisible = containerWidthPx / (2f * s)
+                                                val halfHeightVisible = containerHeightPx / (2f * s)
+                                                val margin = 100f * density / s
+                                                val isVisible = abs(xRel - off.x) < halfWidthVisible + margin &&
+                                                                abs(yRel - off.y) < halfHeightVisible + margin
+                                                
+                                                if (isVisible) {
+                                                    up.consume()
                                                     onLandmarkClick?.invoke(label.id)
                                                 }
                                             }
-                                        } else Modifier
-                                    } else Modifier
-                                )
+                                        }
+                                    }
+                                }
                                 .size(width = 100.dp, height = 50.dp),
                             contentAlignment = Alignment.Center
                         ) {
@@ -610,8 +598,13 @@ fun ZoomableBox(
                                             contentAlignment = Alignment.Center,
                                             modifier = Modifier
                                                 .pointerInput(label.id) {
-                                                    detectTapGestures {
-                                                        onLandmarkClick?.invoke(label.id)
+                                                    awaitEachGesture {
+                                                        val down = awaitFirstDown(requireUnconsumed = false)
+                                                        val up = waitForUpOrCancellation()
+                                                        if (up != null) {
+                                                            up.consume()
+                                                            onLandmarkClick?.invoke(label.id)
+                                                        }
                                                     }
                                                 }
                                         ) {
@@ -622,9 +615,9 @@ fun ZoomableBox(
                                                 modifier = Modifier
                                                     .graphicsLayer {
                                                         // Move text above the center (coordinate)
-                                                        // Base: -24dp (icon height) - 8dp (padding) = -32dp
-                                                        // Selection: Shift up by 12dp to clear expanded icon (36dp + 8dp = 44dp)
-                                                        translationY = if (isSelected) -44.dp.toPx() else -32.dp.toPx()
+                                                        // Base: -24dp (icon height) - 4dp (padding) = -28dp
+                                                        // Selection: Shift up to clear expanded icon (32dp + 8dp = 40dp)
+                                                        translationY = if (isSelected) -40.dp.toPx() else -28.dp.toPx()
                                                     }
                                             ) {
                                                 Text(
