@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -56,11 +58,13 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pup_lagoon_app.data.LabelType
 import com.example.pup_lagoon_app.data.MapLabel
+import com.example.pup_lagoon_app.data.StallLocation
 import androidx.compose.ui.draw.shadow
 import com.example.pup_lagoon_app.ui.theme.Maroon
 
@@ -122,9 +126,9 @@ fun ZoomableBox(
     initialCenterPixel: Offset? = null,
     targetCenterPixel: Offset? = null,
     selectedStallIds: Set<String> = emptySet(),
-    selectedStallLocations: Map<String, Offset> = emptyMap(),
+    selectedStallLocations: Map<String, StallLocation> = emptyMap(),
     contentFullSize: IntSize? = null,
-    keptPins: Map<String, Offset> = emptyMap(),
+    keptPins: Map<String, StallLocation> = emptyMap(),
     mapLabels: List<MapLabel> = emptyList(),
     navigationPath: List<Offset> = emptyList(),
     selectedGateId: String? = null,
@@ -135,7 +139,7 @@ fun ZoomableBox(
     onZoom: (() -> Unit)? = null,
     onClick: (() -> Unit)? = null,
     onInteraction: (() -> Unit)? = null,
-    allStallLocations: Map<String, Offset> = emptyMap(),
+    allStallLocations: Map<String, StallLocation> = emptyMap(),
     isLoading: Boolean = false,
     content: @Composable () -> Unit,
 ) {
@@ -336,11 +340,11 @@ fun ZoomableBox(
                     val fullWidth = contentFullSize.width.toFloat()
                     val fullHeight = contentFullSize.height.toFloat()
 
-                    allStallLocations.forEach { (id, location) ->
+                    allStallLocations.forEach { (id, stallLocation) ->
                         // Only show if NOT currently selected or kept (to avoid overlap with pins)
                         if (id !in selectedStallIds && id !in keptPins.keys) {
-                            val iconX = (location.x / fullWidth) * baseWidthPx
-                            val iconY = (location.y / fullHeight) * baseHeightPx
+                            val iconX = (stallLocation.pixelX / fullWidth) * baseWidthPx
+                            val iconY = (stallLocation.pixelY / fullHeight) * baseHeightPx
 
                             val iconXRelCenter = iconX - baseWidthPx / 2f
                             val iconYRelCenter = iconY - baseHeightPx / 2f
@@ -365,7 +369,7 @@ fun ZoomableBox(
                                         transformOrigin = TransformOrigin(0.5f, 1f)
                                         scaleX = 1f / s
                                         scaleY = 1f / s
-                                        translationX = iconX - (40.dp.toPx() / 2f)
+                                        translationX = iconX - (120.dp.toPx() / 2f)
                                         
                                         // The container is 60dp high.
                                         // The circle icon is 24dp high and at the BOTTOM of the container.
@@ -373,7 +377,7 @@ fun ZoomableBox(
                                         // To center that circle on 'iconY', we need to offset by (60 - 12) = 48dp.
                                         translationY = iconY - (60.dp.toPx())
                                     }
-                                    .size(width = 40.dp, height = 60.dp)
+                                    .size(width = 120.dp, height = 60.dp)
                                     .pointerInput(id) {
                                         awaitEachGesture {
                                             val down = awaitFirstDown(requireUnconsumed = false)
@@ -407,7 +411,7 @@ fun ZoomableBox(
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.Bottom
                                 ) {
-                                    // Stall Number
+                                    // Stall Number / Name
                                     Surface(
                                         color = Color.White.copy(alpha = 0.8f),
                                         shape = RoundedCornerShape(4.dp),
@@ -416,14 +420,25 @@ fun ZoomableBox(
                                             .shadow(2.dp, RoundedCornerShape(4.dp)),
                                         shadowElevation = 2.dp
                                     ) {
+                                        val s = currentScaleProvider()
+                                        val displayText = if (s > 3.0f && !stallLocation.stallName.isNullOrEmpty()) {
+                                            val name = stallLocation.stallName
+                                            if (name.length > 12) name.take(12) + "..." else name
+                                        } else {
+                                            "Stall ${id.trimStart('0')}"
+                                        }
+
                                         Text(
-                                            text = "Stall ${id.trimStart('0')}",
+                                            text = displayText,
                                             style = MaterialTheme.typography.labelSmall.copy(
                                                 fontSize = 8.sp,
                                                 fontWeight = FontWeight.SemiBold
                                             ),
                                             color = Maroon,
-                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                                            maxLines = 1,
+                                            softWrap = false,
+                                            textAlign = TextAlign.Center
                                         )
                                     }
 
@@ -469,11 +484,11 @@ fun ZoomableBox(
                     val fullWidth = contentFullSize.width.toFloat()
                     val fullHeight = contentFullSize.height.toFloat()
                     
-                    keptPins.forEach { (id, location) ->
+                    keptPins.forEach { (id, stallLocation) ->
                         // Skip if it's one of the currently selected stalls
                         if (id !in selectedStallIds) {
-                            val pinX = (location.x / fullWidth) * baseWidthPx
-                            val pinY = (location.y / fullHeight) * baseHeightPx
+                            val pinX = (stallLocation.pixelX / fullWidth) * baseWidthPx
+                            val pinY = (stallLocation.pixelY / fullHeight) * baseHeightPx
 
                             val xRel = pinX - baseWidthPx / 2f
                             val yRel = pinY - baseHeightPx / 2f
@@ -558,9 +573,9 @@ fun ZoomableBox(
                     val fullWidth = contentFullSize.width.toFloat()
                     val fullHeight = contentFullSize.height.toFloat()
 
-                    selectedStallLocations.forEach { (id, location) ->
-                        val pinX = (location.x / fullWidth) * baseWidthPx
-                        val pinY = (location.y / fullHeight) * baseHeightPx
+                    selectedStallLocations.forEach { (id, stallLocation) ->
+                        val pinX = (stallLocation.pixelX / fullWidth) * baseWidthPx
+                        val pinY = (stallLocation.pixelY / fullHeight) * baseHeightPx
 
                         Box(
                             contentAlignment = Alignment.Center,

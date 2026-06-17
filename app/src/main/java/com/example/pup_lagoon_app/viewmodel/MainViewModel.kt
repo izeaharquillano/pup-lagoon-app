@@ -12,6 +12,7 @@ import com.example.pup_lagoon_app.data.FoodRecord
 import com.example.pup_lagoon_app.data.MergedRecords
 import com.example.pup_lagoon_app.data.FoodRepository
 import com.example.pup_lagoon_app.data.MapLabel
+import com.example.pup_lagoon_app.data.StallLocation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
@@ -229,20 +230,20 @@ class MainViewModel(private val repository: FoodRepository) : ViewModel() {
         selectedStallId?.let { it in keptStallIds } ?: false
     }
 
-    val selectedStallLocations: Map<String, Offset> by derivedStateOf {
+    val selectedStallLocations: Map<String, StallLocation> by derivedStateOf {
         selectedStallIds.associateWith { stallId ->
-            repository.getStallLocation(stallId)?.toOffset() ?: Offset.Zero
-        }.filter { it.value != Offset.Zero }
+            repository.getStallLocation(stallId)
+        }.filterValues { it != null }.mapValues { it.value!! }
     }
 
-    val keptStallLocations: Map<String, Offset> by derivedStateOf {
+    val keptStallLocations: Map<String, StallLocation> by derivedStateOf {
         keptStallIds.associateWith { stallId ->
-            repository.getStallLocation(stallId)?.toOffset() ?: Offset.Zero
-        }.filter { it.value != Offset.Zero }
+            repository.getStallLocation(stallId)
+        }.filterValues { it != null }.mapValues { it.value!! }
     }
 
-    val allStallLocations: Map<String, Offset> = repository.getAllStallLocations()
-        .associate { it.stallId to it.toOffset() }
+    val allStallLocations: Map<String, StallLocation> = repository.getAllStallLocations()
+        .associateBy { it.stallId }
 
     val stallFoods: List<MergedRecords> by derivedStateOf {
         val stallId = selectedStallId ?: return@derivedStateOf emptyList<MergedRecords>()

@@ -101,6 +101,13 @@ class FoodRepository(private val context: Context) {
                         numericPrice = numericPrice,
                         categories = categories
                     )
+
+                    // Update stall name in stallLocations if it exists
+                    stallLocations[record.stallId]?.let { loc ->
+                        if (loc.stallName == null) {
+                            stallLocations[record.stallId] = loc.copy(stallName = record.stallName)
+                        }
+                    }
                     
                     // Index by name (lowercase for case-insensitive prefix search)
                     nameTree.insert(record.name.lowercase(), record)

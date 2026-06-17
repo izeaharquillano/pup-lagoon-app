@@ -5,7 +5,8 @@ import androidx.compose.ui.geometry.Offset
 data class StallLocation(
     val stallId: String,
     val pixelX: Float,
-    val pixelY: Float
+    val pixelY: Float,
+    val stallName: String? = null
 ) {
     fun toOffset() = Offset(pixelX, pixelY)
 }
