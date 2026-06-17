@@ -242,9 +242,8 @@ class FoodRepository(private val context: Context) {
         path.add(Offset(from.pixelX, from.pixelY))
 
         // Full logical sequence of stalls around the lagoon in physical order
-        // Note: 15 and 16 are swapped because physically 15 comes after 17 and before 16.
         val fullLoop = listOf(
-            "27", "26", "25", "24", "23", "22", "21", "20", "19", "18", "17", "15", "16", "14", "13", 
+            "27", "26", "25", "24", "23", "22", "21", "20", "19", "18", "17", "16", "15", "14", "13",
             "12", "11", "10", "09", "08", "07", "06", "05", "04", "03", "02", "01"
         )
         val destId = to.stallId

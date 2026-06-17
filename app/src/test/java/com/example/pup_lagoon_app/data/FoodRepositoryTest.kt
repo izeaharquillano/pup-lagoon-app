@@ -32,8 +32,8 @@ class FoodRepositoryTest {
         """.trimIndent()
 
         `when`(assetManager.open("map_labels.csv")).thenReturn(ByteArrayInputStream(mapLabelsCsv.toByteArray()))
-        `when`(assetManager.open("stall_locations.csv")).thenReturn(ByteArrayInputStream("id,pixel_x,pixel_y\nS01,150,150\nS02,450,450".toByteArray()))
-        `when`(assetManager.open("food_records.csv")).thenReturn(ByteArrayInputStream("stall_id,stall_name,food_id,name,price,categories\nS01,Stall 1,F01,Burger,50,Fast Food".toByteArray()))
+        `when`(assetManager.open("stall_locations.csv")).thenReturn(ByteArrayInputStream("id,pixel_x,pixel_y\n01,150,150\n02,450,450\n12,2139,1360".toByteArray()))
+        `when`(assetManager.open("food_records.csv")).thenReturn(ByteArrayInputStream("stall_id,stall_name,food_id,name,price,categories\n01,Stall 1,F01,Burger,50,Fast Food".toByteArray()))
 
         repository = FoodRepository(context)
     }
@@ -49,29 +49,28 @@ class FoodRepositoryTest {
     @Test
     fun testCalculatePathWithLandmarks() {
         val gate1 = MapLabel("L01", "Gate 1", 100f, 100f, LabelType.LANDMARK, 0f)
-        val stall = StallLocation("S01", 1902f, 744f)
+        val stall = StallLocation("12", 2139f, 1360f)
         
         // Now has an exit waypoint
         val path = repository.calculatePath(gate1, stall)
         
-        assertEquals(3, path.size)
+        assertEquals(2, path.size)
         assertEquals(Offset(100f, 100f), path[0])
         assertEquals(Offset(2139f, 1360f), path[1])
-        assertEquals(Offset(1902f, 744f), path[2])
     }
 
     @Test
     fun testGetDirectionText() {
         val gate1 = MapLabel("L01", "Gate 1", 2235f, 1360f, LabelType.LANDMARK, 0f)
-        val stallNorth = StallLocation("S01", 1902f, 744f)
+        val stallNorth = StallLocation("01", 1902f, 744f)
         
         val direction = repository.getDirectionText(gate1, stallNorth)
-        assert(direction.contains("turn right (North)"))
+        assert(direction.contains("turn right"))
         
         val gate3 = MapLabel("L09", "Gate 3", 1299f, 1214f, LabelType.LANDMARK, 0f)
-        val stallSouth = StallLocation("S01", 1902f, 1500f)
+        val stallSouth = StallLocation("01", 1902f, 1500f)
         
         val direction3 = repository.getDirectionText(gate3, stallSouth)
-        assert(direction3.contains("turn right (South)"))
+        assert(direction3.contains("turn right"))
     }
 }

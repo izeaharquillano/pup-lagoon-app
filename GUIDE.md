@@ -52,7 +52,7 @@ The app does not use generic graph traversal (like A*) because the walking paths
 
 ### 3.1 The Physical Backbone
 The algorithm relies on a hardcoded physical sequence of stalls, ordered as they appear when walking around the lagoon:
-`fullLoop = ["27", "26", "25", ..., "15", "16", "14", ..., "01"]`
+`fullLoop = ["27", "26", "25", ..., "16", "15", "14", ..., "01"]`
 *(Note: 15 and 16 are swapped in the sequence to match their actual physical placement between 17 and 14).*
 
 ### 3.2 Entry Point Hubs
