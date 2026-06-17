@@ -24,7 +24,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.DoorSliding
@@ -57,7 +59,56 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pup_lagoon_app.data.LabelType
 import com.example.pup_lagoon_app.data.MapLabel
+import androidx.compose.ui.draw.shadow
 import com.example.pup_lagoon_app.ui.theme.Maroon
+
+private val PinShape = GenericShape { size, _ ->
+    // Exact Material Design Path for LocationOn (24x24 grid)
+    // M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z
+    
+    val scaleX = size.width / 24f
+    val scaleY = size.height / 24f
+    
+    // Scale everything to fit the component size
+    moveTo(12f * scaleX, 2f * scaleY)
+    
+    // C8.13 2 5 5.13 5 9
+    cubicTo(
+        8.13f * scaleX, 2f * scaleY,
+        5f * scaleX, 5.13f * scaleY,
+        5f * scaleX, 9f * scaleY
+    )
+    
+    // c0 5.25 7 13 7 13
+    // Note: relative cubicTo or lineTo?
+    // The "s7-7.75 7-13" implies a symmetric curve.
+    // Let's use the explicit points from the full path data:
+    // M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z
+    
+    // From (5, 9) to bottom tip (12, 22)
+    cubicTo(
+        5f * scaleX, 14.25f * scaleY,
+        12f * scaleX, 22f * scaleY,
+        12f * scaleX, 22f * scaleY
+    )
+    
+    // From bottom tip (12, 22) to right side (19, 9)
+    // s7-7.75 7-13 -> relative to current (12, 22) -> (19, 14.25) to (19, 9)
+    cubicTo(
+        12f * scaleX, 22f * scaleY,
+        19f * scaleX, 16.75f * scaleY,
+        19f * scaleX, 9f * scaleY
+    )
+    
+    // From (19, 9) back to top (12, 2)
+    cubicTo(
+        19f * scaleX, 5.13f * scaleY,
+        15.87f * scaleX, 2f * scaleY,
+        12f * scaleX, 2f * scaleY
+    )
+
+    close()
+}
 
 @Composable
 fun ZoomableBox(
@@ -265,11 +316,7 @@ fun ZoomableBox(
                                 style = androidx.compose.ui.graphics.drawscope.Stroke(
                                     width = 3.dp.toPx() / s,
                                     cap = StrokeCap.Round,
-                                    join = androidx.compose.ui.graphics.StrokeJoin.Round,
-                                    pathEffect = PathEffect.dashPathEffect(
-                                        floatArrayOf(10f / s, 10f / s),
-                                        0f
-                                    )
+                                    join = androidx.compose.ui.graphics.StrokeJoin.Round
                                 )
                             )
                         }
@@ -356,7 +403,10 @@ fun ZoomableBox(
                                     Surface(
                                         color = Color.White.copy(alpha = 0.8f),
                                         shape = RoundedCornerShape(4.dp),
-                                        modifier = Modifier.padding(bottom = 4.dp)
+                                        modifier = Modifier
+                                            .padding(bottom = 4.dp)
+                                            .shadow(2.dp, RoundedCornerShape(4.dp)),
+                                        shadowElevation = 2.dp
                                     ) {
                                         Text(
                                             text = "Stall ${id.trimStart('0')}",
@@ -374,6 +424,7 @@ fun ZoomableBox(
                                         contentAlignment = Alignment.Center,
                                         modifier = Modifier
                                             .size(24.dp)
+                                            .shadow(3.dp, CircleShape)
                                             .background(Maroon, CircleShape)
                                     ) {
                                         Icon(
@@ -461,23 +512,34 @@ fun ZoomableBox(
                                         }
                                     }
                             ) {
-                                // White filler for the head of the pin
-                                Box(
-                                    modifier = Modifier
-                                        .size(16.dp)
-                                        .graphicsLayer {
-                                            // Centering at the pin head (roughly 12dp from top of 44dp icon)
-                                            // icon center is 22dp, so shift up by 8dp (adjusted from -10dp)
-                                            translationY = -8.dp.toPx()
-                                        }
-                                        .background(Color.White, CircleShape)
-                                )
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier.size(44.dp)
+                            ) {
+                                // 1. The Pin Icon with Shadow
+                                // No background here to prevent side overflow
                                 Icon(
                                     imageVector = Icons.Default.LocationOn,
                                     contentDescription = "Kept Pin",
                                     tint = Maroon,
-                                    modifier = Modifier.size(44.dp)
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .shadow(elevation = 4.dp, shape = PinShape)
                                 )
+
+                                // 2. The White Filler for the hole (Placed on top)
+                                // Material 24x24 grid: hole center (12, 9.5), radius 2.5
+                                // 44dp scale: hole size ~9.17dp, offset from center -4.58dp
+                                // Adjusted: Moving up slightly more (from -4.58 to -5.0) to fix sliver
+                                Box(
+                                    modifier = Modifier
+                                        .size(10.dp) // Slightly larger than hole (9.17dp) to ensure coverage
+                                        .graphicsLayer {
+                                            translationY = -5.0.dp.toPx()
+                                        }
+                                        .background(Color.White, CircleShape)
+                                )
+                            }
                             }
                         }
                     }
@@ -504,34 +566,42 @@ fun ZoomableBox(
                                     translationY = pinY - 54.dp.toPx()
                                 }
                         ) {
-                            // White filler for the head of the pin
                             Box(
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .graphicsLayer {
-                                        // Centering at the pin head (roughly 15dp from top of 54dp icon)
-                                        // icon center is 27dp, so shift up by 10dp (adjusted from -12dp)
-                                        translationY = -10.dp.toPx()
-                                    }
-                                    .background(Color.White, CircleShape)
-                            )
-                            Icon(
-                                imageVector = Icons.Default.LocationOn,
-                                contentDescription = "Selected Stall Pin",
-                                tint = Color.Red,
-                                modifier = Modifier
-                                    .size(54.dp)
-                                    .pointerInput(id) {
-                                        awaitEachGesture {
-                                            val down = awaitFirstDown(requireUnconsumed = false)
-                                            val up = waitForUpOrCancellation()
-                                            if (up != null) {
-                                                up.consume()
-                                                onPinClick?.invoke(id)
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier.size(54.dp)
+                            ) {
+                                // 1. The Pin Icon with Shadow
+                                Icon(
+                                    imageVector = Icons.Default.LocationOn,
+                                    contentDescription = "Selected Stall Pin",
+                                    tint = Color.Red,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .shadow(elevation = 6.dp, shape = PinShape)
+                                        .pointerInput(id) {
+                                            awaitEachGesture {
+                                                val down = awaitFirstDown(requireUnconsumed = false)
+                                                val up = waitForUpOrCancellation()
+                                                if (up != null) {
+                                                    up.consume()
+                                                    onPinClick?.invoke(id)
+                                                }
                                             }
                                         }
-                                    }
-                            )
+                                )
+
+                                // 2. The White Filler for the hole
+                                // 54dp scale: hole size ~11.25dp, offset from center -5.625dp
+                                // Adjusted: Moving up slightly more (from -5.625 to -6.2) to fix sliver
+                                Box(
+                                    modifier = Modifier
+                                        .size(12.dp) // Slightly larger than hole (11.25dp)
+                                        .graphicsLayer {
+                                            translationY = -6.2.dp.toPx()
+                                        }
+                                        .background(Color.White, CircleShape)
+                                )
+                            }
                         }
                     }
 
