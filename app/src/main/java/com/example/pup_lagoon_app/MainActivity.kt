@@ -252,7 +252,7 @@ private fun MapLayer(
                 .fillMaxSize(),
             contentAspectRatio = if (mapSize.width > 0) mapSize.width / mapSize.height else 1f,
             initialScale = 1.3f,
-            initialCenterPixel = Offset(1787f, 1272f),
+            initialCenterPixel = Offset(1765f, 1422f),
             targetCenterPixel = viewModel.selectedStallLocation,
             selectedStallIds = viewModel.selectedStallIds,
             selectedStallLocations = viewModel.selectedStallLocations,
