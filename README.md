@@ -2,7 +2,7 @@
 
 A modern, efficient Android application designed to help students and visitors navigate the diverse food landscape of the PUP Lagoon area. Built with Jetpack Compose and powered by custom-optimized data structures for a seamless experience.
 
-## 🚀 Features
+## Features
 
 - **Smart Search & Filtering**: Find your favorite meals instantly using real-time search, filtered by category and price range.
 - **Interactive Lagoon Map**: A zoomable, interactive map showing all stall locations and campus landmarks.
@@ -11,7 +11,7 @@ A modern, efficient Android application designed to help students and visitors n
 - **Favorites & Pinning**: "Keep" your go-to stalls for quick access and highlighting on the map.
 - **Seamless Onboarding**: Interactive tutorials and onboarding screens to help you get the most out of the app.
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Language**: [Kotlin](https://kotlinlang.org/)
 - **UI Framework**: [Jetpack Compose](https://developer.android.com/compose) (Material 3)
@@ -20,7 +20,7 @@ A modern, efficient Android application designed to help students and visitors n
 - **Concurrency**: Kotlin Coroutines & StateFlow for reactive UI updates.
 - **Image Loading**: [Coil](https://coil-kt.github.io/coil/)
 
-## 🧠 Technical Highlights
+## Technical Highlights
 
 ### High-Performance Data Retrieval
 To ensure instantaneous search results without the overhead of a traditional database, the app implements a custom **Multi-Value B-Tree**. This allows for $O(\log n)$ search and range queries, even as the food catalog grows.
@@ -44,7 +44,7 @@ app/src/main/java/com/example/pup_lagoon_app/
 └── MainActivity.kt # Main entry point & Navigation
 ```
 
-## 🚦 Getting Started
+## Getting Started
 
 1. **Clone the repository**:
    ```bash
@@ -55,16 +55,11 @@ app/src/main/java/com/example/pup_lagoon_app/
 3. **Run the App**:
    Click the **Run** button in Android Studio or use `Shift + F10` to deploy to an emulator or physical device.
 
-## 📖 Documentation
+## Documentation
 
 For a deeper dive into the architecture and algorithms, see:
 - [GUIDE.md](GUIDE.md) - Technical Architecture & Algorithm Guide
 
-## 📄 License
+## License
 
 This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- Built for the PUP Community.
-- Data provided by the PUP Lagoon Food Stall community.
