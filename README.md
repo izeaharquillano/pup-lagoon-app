@@ -31,7 +31,7 @@ Unlike generic A* algorithms, our pathfinding is optimized for the circular geom
 ### Data Merging & Deduplication
 The search engine automatically groups variations of the same item (e.g., different sizes or quantities) into single, clean search results, providing a clutter-free experience while still allowing price-range transparency.
 
-## 📂 Project Structure
+## Project Structure
 
 ```text
 app/src/main/java/com/example/pup_lagoon_app/
