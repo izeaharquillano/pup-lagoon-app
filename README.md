@@ -13,7 +13,7 @@ A modern, efficient Android application designed to help students and visitors n
 
 ## UI Sample
 
-![UI Sample](_img/ui_sample.png)
+<img src="_img/ui_sample.png" alt="UI Sample" height="500">
 
 ## Tech Stack
 
