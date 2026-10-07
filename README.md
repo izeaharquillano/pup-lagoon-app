@@ -11,6 +11,10 @@ A modern, efficient Android application designed to help students and visitors n
 - **Favorites & Pinning**: "Keep" your go-to stalls for quick access and highlighting on the map.
 - **Seamless Onboarding**: Interactive tutorials and onboarding screens to help you get the most out of the app.
 
+## UI Sample
+
+![UI Sample](_img/ui_sample.png)
+
 ## Tech Stack
 
 - **Language**: [Kotlin](https://kotlinlang.org/)
